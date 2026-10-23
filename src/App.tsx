@@ -168,19 +168,19 @@ export default function App() {
     }
   };
 
-  // Application Data States
+  // Application Data States (Clean/Empty initial state for Command Center)
   const [profile, setProfile] = useState<VoterProfile>(INITIAL_VOTER_PROFILE);
   const [missions, setMissions] = useState<MissionItem[]>(INITIAL_MISSIONS);
   const [rewards, setRewards] = useState<RewardItem[]>(INITIAL_REWARDS);
-  const [aspirasiList, setAspirasiList] = useState<AspirasiItem[]>(INITIAL_ASPIRASI);
-  const [c1Records, setC1Records] = useState<FormC1Upload[]>(INITIAL_C1_RECORDS);
-  const [b1Records, setB1Records] = useState<FormB1Upload[]>(INITIAL_B1_RECORDS);
+  const [aspirasiList, setAspirasiList] = useState<AspirasiItem[]>([]);
+  const [c1Records, setC1Records] = useState<FormC1Upload[]>([]);
+  const [b1Records, setB1Records] = useState<FormB1Upload[]>([]);
   const [news, setNews] = useState<NewsItem[]>(INITIAL_NEWS);
 
-  // New modules states: Survey, DPT, WhatsApp Blazt
-  const [surveyList, setSurveyList] = useState<ElectabilitySurveySubmission[]>(INITIAL_ELECTABILITY_SURVEYS);
-  const [dptList, setDptList] = useState<DptVoterRecord[]>(INITIAL_DPT_RECORDS);
-  const [blaztLogs, setBlaztLogs] = useState<WhatsAppBlaztItem[]>(INITIAL_BLAZT_ITEMS);
+  // New modules states: Survey, DPT, WhatsApp Blazt (Empty by default for Command Center)
+  const [surveyList, setSurveyList] = useState<ElectabilitySurveySubmission[]>([]);
+  const [dptList, setDptList] = useState<DptVoterRecord[]>([]);
+  const [blaztLogs, setBlaztLogs] = useState<WhatsAppBlaztItem[]>([]);
 
   // Modals State
   const [referralModalOpen, setReferralModalOpen] = useState(false);
@@ -710,6 +710,28 @@ export default function App() {
     );
   };
 
+  // Handler: Kosongkan seluruh data Command Center (sesuai permintaan pengguna)
+  const handleClearCommandCenterData = () => {
+    setC1Records([]);
+    setB1Records([]);
+    setSurveyList([]);
+    setDptList([]);
+    setBlaztLogs([]);
+    setAspirasiList([]);
+    showToast('🧹 Semua data Command Center berhasil dikosongkan!');
+  };
+
+  // Handler: Muat sampel demo jika ingin menguji visualisasi data
+  const handleLoadSampleCommandCenterData = () => {
+    setC1Records(INITIAL_C1_RECORDS);
+    setB1Records(INITIAL_B1_RECORDS);
+    setSurveyList(INITIAL_ELECTABILITY_SURVEYS);
+    setDptList(INITIAL_DPT_RECORDS);
+    setBlaztLogs(INITIAL_BLAZT_ITEMS);
+    setAspirasiList(INITIAL_ASPIRASI);
+    showToast('📊 Sampel simulasi data pemenangan berhasil dimuat!');
+  };
+
   // If in Website mode, render the full landing website (inspired by SIMCALEG with SWARAKU's modules & Inquire form)
   if (mainViewMode === 'website') {
     return (
@@ -979,6 +1001,8 @@ export default function App() {
                 onSubmitC1={handleSubmitC1}
                 onSubmitB1={handleSubmitB1}
                 onSubmitSurvey={handleSurveySubmitted}
+                onClearAllData={handleClearCommandCenterData}
+                onLoadSampleData={handleLoadSampleCommandCenterData}
               />
             )}
 

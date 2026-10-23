@@ -54,6 +54,8 @@ import {
   WifiOff,
   HeartHandshake,
   Compass,
+  Trash2,
+  RotateCcw,
 } from 'lucide-react';
 
 interface CommandCenterViewProps {
@@ -74,21 +76,25 @@ interface CommandCenterViewProps {
   onSubmitC1?: (c1Data: Partial<FormC1Upload>) => void;
   onSubmitB1?: (b1Data: Partial<FormB1Upload>) => void;
   onSubmitSurvey?: (submission: ElectabilitySurveySubmission, points: number) => void;
+  onClearAllData?: () => void;
+  onLoadSampleData?: () => void;
 }
 
 export const CommandCenterView: React.FC<CommandCenterViewProps> = ({
   aspirasiList,
   c1Records,
-  b1Records = INITIAL_B1_RECORDS,
+  b1Records = [],
   onUpdateAspirasiStatus,
-  surveyList = INITIAL_ELECTABILITY_SURVEYS,
-  dptList = INITIAL_DPT_RECORDS,
+  surveyList = [],
+  dptList = [],
   onAddDptVoter,
-  blaztLogs = INITIAL_BLAZT_ITEMS,
+  blaztLogs = [],
   onTriggerBlazt,
   onSubmitC1,
   onSubmitB1,
   onSubmitSurvey,
+  onClearAllData,
+  onLoadSampleData,
 }) => {
   const [activeTab, setActiveTab] = useState<
     'quick_count' | 'peta_suara' | 'dpt' | 'blazt' | 'aspirasi' | 'demografi' | 'survei'
@@ -135,7 +141,7 @@ export const CommandCenterView: React.FC<CommandCenterViewProps> = ({
   const totalPaslon3 = c1P3 + b1P3;
   const grandTotalTidakSah = c1TidakSah + b1TidakSah;
   const grandTotalSah = totalPaslon1 + totalPaslon2 + totalPaslon3;
-  const grandTotalMasuk = grandTotalSah + grandTotalTidakSah || 1;
+  const grandTotalMasuk = grandTotalSah + grandTotalTidakSah;
 
   const pctPaslon1 = grandTotalSah > 0 ? ((totalPaslon1 / grandTotalSah) * 100).toFixed(1) : '0.0';
   const pctPaslon2 = grandTotalSah > 0 ? ((totalPaslon2 / grandTotalSah) * 100).toFixed(1) : '0.0';
@@ -173,7 +179,33 @@ export const CommandCenterView: React.FC<CommandCenterViewProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0 flex-wrap">
+        <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+          {onClearAllData && (
+            <button
+              onClick={() => {
+                if (window.confirm('Kosongkan semua data Command Center (Quick Count C1 & B1, DPT, Survei, WhatsApp Blazt, dan Aspirasi)? Tabulasi akan kembali bersih dari nol.')) {
+                  onClearAllData();
+                }
+              }}
+              className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+              title="Kosongkan seluruh data Command Center"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+              <span>Kosongkan Data</span>
+            </button>
+          )}
+
+          {onLoadSampleData && (
+            <button
+              onClick={onLoadSampleData}
+              className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+              title="Muat data contoh/simulasi"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-slate-600" />
+              <span>Muat Sampel Demo</span>
+            </button>
+          )}
+
           <button
             onClick={() => setShowC1Modal(true)}
             className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
@@ -222,7 +254,7 @@ export const CommandCenterView: React.FC<CommandCenterViewProps> = ({
             </span>
           </div>
           <span className="text-[10px] text-cyan-600 font-bold mt-1 block">
-            Unggul di Wilayah Dapil
+            {totalPaslon1 > 0 ? 'Unggul di Wilayah Dapil' : 'Menunggu Input C1 / B1'}
           </span>
         </div>
 
@@ -376,6 +408,24 @@ export const CommandCenterView: React.FC<CommandCenterViewProps> = ({
             </div>
 
             {/* Quick Count Bars */}
+            {grandTotalMasuk === 0 && (
+              <div className="p-3.5 bg-cyan-100/70 border border-cyan-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-cyan-950">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-cyan-700 shrink-0" />
+                  <span>
+                    <strong>Tabulasi Quick Count Bersih (0 Suara):</strong> Belum ada data lembar C1 Plano maupun Form B1 masuk. Saksi TPS dapat melakukan Scan C1 Plano dari aplikasi atau klik tombol unggah.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowC1Modal(true)}
+                  className="px-3 py-1 bg-cyan-700 hover:bg-cyan-800 text-white font-bold rounded-lg text-xs whitespace-nowrap cursor-pointer shrink-0"
+                >
+                  + Unggah C1
+                </button>
+              </div>
+            )}
+
             <div className="space-y-3 pt-2">
               <div>
                 <div className="flex items-center justify-between text-xs mb-1 font-bold">
@@ -538,51 +588,72 @@ export const CommandCenterView: React.FC<CommandCenterViewProps> = ({
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {c1Records.map((c) => (
-                          <tr key={c.id} className="hover:bg-cyan-50/40">
-                            <td className="p-3">
-                              <span className="font-extrabold text-cyan-800 block">{c.tps}</span>
-                              <span className="text-[10px] text-slate-500">
-                                {c.kelurahan}, {c.kecamatan}
-                              </span>
-                            </td>
-                            <td className="p-3">
-                              <span className="font-semibold text-slate-900 block">{c.saksiNama}</span>
-                              <span className="text-[10px] text-slate-400 font-mono">{c.waktuUpload}</span>
-                            </td>
-                            <td className="p-3 text-center font-mono font-bold text-emerald-700 bg-emerald-50/50">
-                              {c.suaraPaslon1}
-                            </td>
-                            <td className="p-3 text-center font-mono text-slate-700">{c.suaraPaslon2}</td>
-                            <td className="p-3 text-center font-mono text-slate-700">{c.suaraPaslon3}</td>
-                            <td className="p-3 text-center font-mono text-rose-700">{c.suaraTidakSah}</td>
-                            <td className="p-3 text-center font-mono font-bold text-slate-900">
-                              {c.totalSuaraSah}
-                            </td>
-                            <td className="p-3 text-center">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setPreviewDoc({
-                                    title: `Formulir C1 Plano ${c.tps} (${c.kelurahan})`,
-                                    url: c.fotoC1Url,
-                                    fileName: c.fileName || 'Form-C1-Plano.jpg',
-                                    info: `Pelapor: ${c.saksiNama} · Waktu: ${c.waktuUpload} · Sah: ${c.totalSuaraSah}`,
-                                  })
-                                }
-                                className="px-2 py-1 bg-cyan-50 hover:bg-cyan-100 text-cyan-800 text-[11px] font-bold rounded-lg border border-cyan-200 inline-flex items-center gap-1 cursor-pointer transition-colors"
-                              >
-                                <Eye className="w-3 h-3 text-cyan-600" />
-                                <span>Lihat File</span>
-                              </button>
-                            </td>
-                            <td className="p-3 text-center">
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                {c.statusVerifikasi}
-                              </span>
+                        {c1Records.length === 0 ? (
+                          <tr>
+                            <td colSpan={9} className="p-8 text-center text-slate-500 bg-slate-50/50">
+                              <div className="flex flex-col items-center justify-center gap-2 max-w-md mx-auto">
+                                <FileText className="w-8 h-8 text-slate-300" />
+                                <span className="font-bold text-slate-800 text-sm">Belum ada formulir C1 masuk dari TPS</span>
+                                <span className="text-xs text-slate-500">
+                                  Tabulasi C1 Plano masih kosong. Saksi di TPS dapat menggunakan fitur Scan C1 Plano pada aplikasi mobile atau unggah manual.
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => setShowC1Modal(true)}
+                                  className="mt-2 px-3.5 py-1.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                                >
+                                  + Unggah Form C1 Pertama
+                                </button>
+                              </div>
                             </td>
                           </tr>
-                        ))}
+                        ) : (
+                          c1Records.map((c) => (
+                            <tr key={c.id} className="hover:bg-cyan-50/40">
+                              <td className="p-3">
+                                <span className="font-extrabold text-cyan-800 block">{c.tps}</span>
+                                <span className="text-[10px] text-slate-500">
+                                  {c.kelurahan}, {c.kecamatan}
+                                </span>
+                              </td>
+                              <td className="p-3">
+                                <span className="font-semibold text-slate-900 block">{c.saksiNama}</span>
+                                <span className="text-[10px] text-slate-400 font-mono">{c.waktuUpload}</span>
+                              </td>
+                              <td className="p-3 text-center font-mono font-bold text-emerald-700 bg-emerald-50/50">
+                                {c.suaraPaslon1}
+                              </td>
+                              <td className="p-3 text-center font-mono text-slate-700">{c.suaraPaslon2}</td>
+                              <td className="p-3 text-center font-mono text-slate-700">{c.suaraPaslon3}</td>
+                              <td className="p-3 text-center font-mono text-rose-700">{c.suaraTidakSah}</td>
+                              <td className="p-3 text-center font-mono font-bold text-slate-900">
+                                {c.totalSuaraSah}
+                              </td>
+                              <td className="p-3 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setPreviewDoc({
+                                      title: `Formulir C1 Plano ${c.tps} (${c.kelurahan})`,
+                                      url: c.fotoC1Url,
+                                      fileName: c.fileName || 'Form-C1-Plano.jpg',
+                                      info: `Pelapor: ${c.saksiNama} · Waktu: ${c.waktuUpload} · Sah: ${c.totalSuaraSah}`,
+                                    })
+                                  }
+                                  className="px-2 py-1 bg-cyan-50 hover:bg-cyan-100 text-cyan-800 text-[11px] font-bold rounded-lg border border-cyan-200 inline-flex items-center gap-1 cursor-pointer transition-colors"
+                                >
+                                  <Eye className="w-3 h-3 text-cyan-600" />
+                                  <span>Lihat File</span>
+                                </button>
+                              </td>
+                              <td className="p-3 text-center">
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                  {c.statusVerifikasi}
+                                </span>
+                              </td>
+                            </tr>
+                          ))
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -623,58 +694,79 @@ export const CommandCenterView: React.FC<CommandCenterViewProps> = ({
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {b1Records.map((b) => (
-                          <tr key={b.id} className="hover:bg-indigo-50/40">
-                            <td className="p-3">
-                              <span className="font-extrabold text-indigo-900 block">{b.kecamatan}</span>
-                              <span className="text-[10px] text-slate-500">{b.kelurahan}</span>
-                            </td>
-                            <td className="p-3">
-                              <span className="font-semibold text-slate-900 block">{b.koordinatorNama}</span>
-                              <span className="text-[10px] text-slate-400 font-mono">{b.waktuUpload}</span>
-                            </td>
-                            <td className="p-3 text-center font-mono font-bold text-slate-700">
-                              {b.totalTpsTercakup} TPS
-                            </td>
-                            <td className="p-3 text-center font-mono font-bold text-emerald-700 bg-emerald-50/50">
-                              {b.suaraPaslon1.toLocaleString('id-ID')}
-                            </td>
-                            <td className="p-3 text-center font-mono text-slate-700">
-                              {b.suaraPaslon2.toLocaleString('id-ID')}
-                            </td>
-                            <td className="p-3 text-center font-mono text-slate-700">
-                              {b.suaraPaslon3.toLocaleString('id-ID')}
-                            </td>
-                            <td className="p-3 text-center font-mono text-rose-700">
-                              {b.suaraTidakSah.toLocaleString('id-ID')}
-                            </td>
-                            <td className="p-3 text-center font-mono font-bold text-slate-900">
-                              {b.totalSuaraSah.toLocaleString('id-ID')}
-                            </td>
-                            <td className="p-3 text-center">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setPreviewDoc({
-                                    title: `Formulir Model B1-KWK ${b.kecamatan}`,
-                                    url: b.fotoB1Url,
-                                    fileName: b.fileName || 'Form-Model-B1-Kecamatan.jpg',
-                                    info: `Koordinator: ${b.koordinatorNama} · Cakupan: ${b.totalTpsTercakup} TPS · Sah: ${b.totalSuaraSah.toLocaleString('id-ID')}`,
-                                  })
-                                }
-                                className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 text-[11px] font-bold rounded-lg border border-indigo-200 inline-flex items-center gap-1 cursor-pointer transition-colors"
-                              >
-                                <Eye className="w-3 h-3 text-indigo-600" />
-                                <span>Lihat Scan B1</span>
-                              </button>
-                            </td>
-                            <td className="p-3 text-center">
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">
-                                {b.statusVerifikasi}
-                              </span>
+                        {b1Records.length === 0 ? (
+                          <tr>
+                            <td colSpan={10} className="p-8 text-center text-slate-500 bg-slate-50/50">
+                              <div className="flex flex-col items-center justify-center gap-2 max-w-md mx-auto">
+                                <Building2 className="w-8 h-8 text-slate-300" />
+                                <span className="font-bold text-slate-800 text-sm">Belum ada formulir Model B1-KWK Kecamatan masuk</span>
+                                <span className="text-xs text-slate-500">
+                                  Tabulasi rekapitulasi tingkat PPK/Kecamatan masih kosong. Koordinator kecamatan dapat mengunggah lembar Form B1.
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => setShowB1Modal(true)}
+                                  className="mt-2 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                                >
+                                  + Unggah Form B1 Pertama
+                                </button>
+                              </div>
                             </td>
                           </tr>
-                        ))}
+                        ) : (
+                          b1Records.map((b) => (
+                            <tr key={b.id} className="hover:bg-indigo-50/40">
+                              <td className="p-3">
+                                <span className="font-extrabold text-indigo-900 block">{b.kecamatan}</span>
+                                <span className="text-[10px] text-slate-500">{b.kelurahan}</span>
+                              </td>
+                              <td className="p-3">
+                                <span className="font-semibold text-slate-900 block">{b.koordinatorNama}</span>
+                                <span className="text-[10px] text-slate-400 font-mono">{b.waktuUpload}</span>
+                              </td>
+                              <td className="p-3 text-center font-mono font-bold text-slate-700">
+                                {b.totalTpsTercakup} TPS
+                              </td>
+                              <td className="p-3 text-center font-mono font-bold text-emerald-700 bg-emerald-50/50">
+                                {b.suaraPaslon1.toLocaleString('id-ID')}
+                              </td>
+                              <td className="p-3 text-center font-mono text-slate-700">
+                                {b.suaraPaslon2.toLocaleString('id-ID')}
+                              </td>
+                              <td className="p-3 text-center font-mono text-slate-700">
+                                {b.suaraPaslon3.toLocaleString('id-ID')}
+                              </td>
+                              <td className="p-3 text-center font-mono text-rose-700">
+                                {b.suaraTidakSah.toLocaleString('id-ID')}
+                              </td>
+                              <td className="p-3 text-center font-mono font-bold text-slate-900">
+                                {b.totalSuaraSah.toLocaleString('id-ID')}
+                              </td>
+                              <td className="p-3 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setPreviewDoc({
+                                      title: `Formulir Model B1-KWK ${b.kecamatan}`,
+                                      url: b.fotoB1Url,
+                                      fileName: b.fileName || 'Form-Model-B1-Kecamatan.jpg',
+                                      info: `Koordinator: ${b.koordinatorNama} · Cakupan: ${b.totalTpsTercakup} TPS · Sah: ${b.totalSuaraSah.toLocaleString('id-ID')}`,
+                                    })
+                                  }
+                                  className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 text-[11px] font-bold rounded-lg border border-indigo-200 inline-flex items-center gap-1 cursor-pointer transition-colors"
+                                >
+                                  <Eye className="w-3 h-3 text-indigo-600" />
+                                  <span>Lihat Scan B1</span>
+                                </button>
+                              </td>
+                              <td className="p-3 text-center">
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">
+                                  {b.statusVerifikasi}
+                                </span>
+                              </td>
+                            </tr>
+                          ))
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -741,28 +833,49 @@ export const CommandCenterView: React.FC<CommandCenterViewProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {dptList.map((d) => (
-                    <tr key={d.nik} className="hover:bg-slate-50">
-                      <td className="py-3 font-mono font-bold text-slate-800">{d.nik}</td>
-                      <td className="py-3 font-bold text-slate-900">{d.nama}</td>
-                      <td className="py-3">
-                        <span className="font-bold text-cyan-700 block">{d.tps}</span>
-                        <span className="text-[10px] text-slate-500">{d.kelurahan}, {d.kecamatan}</span>
-                      </td>
-                      <td className="py-3 text-slate-600">{d.usia} thn ({d.jenisKelamin})</td>
-                      <td className="py-3 text-slate-600">{d.dapil}</td>
-                      <td className="py-3">
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-100 text-cyan-800 border border-cyan-200">
-                          {d.statusPendukung}
-                        </span>
-                      </td>
-                      <td className="py-3 text-center">
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                          {d.statusDpt}
-                        </span>
+                  {dptList.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="p-8 text-center text-slate-500 bg-slate-50/50">
+                        <div className="flex flex-col items-center justify-center gap-2 max-w-md mx-auto">
+                          <CreditCard className="w-8 h-8 text-slate-300" />
+                          <span className="font-bold text-slate-800 text-sm">Belum ada data DPT tersimpan</span>
+                          <span className="text-xs text-slate-500">
+                            Basis data pemilih DPT KPU masih kosong. Gunakan formulir Auto Cek NIK untuk memeriksa dan menyimpan data pemilih baru.
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setShowCekNikModal(true)}
+                            className="mt-2 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                          >
+                            + Buka Formulir Auto Cek NIK
+                          </button>
+                        </div>
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    dptList.map((d) => (
+                      <tr key={d.nik} className="hover:bg-slate-50">
+                        <td className="py-3 font-mono font-bold text-slate-800">{d.nik}</td>
+                        <td className="py-3 font-bold text-slate-900">{d.nama}</td>
+                        <td className="py-3">
+                          <span className="font-bold text-cyan-700 block">{d.tps}</span>
+                          <span className="text-[10px] text-slate-500">{d.kelurahan}, {d.kecamatan}</span>
+                        </td>
+                        <td className="py-3 text-slate-600">{d.usia} thn ({d.jenisKelamin})</td>
+                        <td className="py-3 text-slate-600">{d.dapil}</td>
+                        <td className="py-3">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-100 text-cyan-800 border border-cyan-200">
+                            {d.statusPendukung}
+                          </span>
+                        </td>
+                        <td className="py-3 text-center">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            {d.statusDpt}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -815,20 +928,41 @@ export const CommandCenterView: React.FC<CommandCenterViewProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {blaztLogs.map((b) => (
-                    <tr key={b.id} className="hover:bg-slate-50">
-                      <td className="py-3 font-bold text-slate-900">{b.namaPenerima}</td>
-                      <td className="py-3 font-mono text-slate-600">{b.noHp}</td>
-                      <td className="py-3 font-mono font-bold text-cyan-800">{b.tps}</td>
-                      <td className="py-3 text-slate-600 max-w-sm truncate">{b.pesanPreview}</td>
-                      <td className="py-3 text-slate-500 font-mono">{b.waktu}</td>
-                      <td className="py-3 text-center">
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                          {b.status}
-                        </span>
+                  {blaztLogs.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="p-8 text-center text-slate-500 bg-slate-50/50">
+                        <div className="flex flex-col items-center justify-center gap-2 max-w-md mx-auto">
+                          <MessageCircle className="w-8 h-8 text-slate-300" />
+                          <span className="font-bold text-slate-800 text-sm">Belum ada riwayat broadcast WhatsApp Blazt</span>
+                          <span className="text-xs text-slate-500">
+                            Riwayat broadcast masih kosong. Anda dapat menyebarkan pesan serempak kepada saksi, relawan, dan pemilih terdaftar.
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setShowBlaztModal(true)}
+                            className="mt-2 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                          >
+                            + Mulai WhatsApp Blazt Perdana
+                          </button>
+                        </div>
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    blaztLogs.map((b) => (
+                      <tr key={b.id} className="hover:bg-slate-50">
+                        <td className="py-3 font-bold text-slate-900">{b.namaPenerima}</td>
+                        <td className="py-3 font-mono text-slate-600">{b.noHp}</td>
+                        <td className="py-3 font-mono font-bold text-cyan-800">{b.tps}</td>
+                        <td className="py-3 text-slate-600 max-w-sm truncate">{b.pesanPreview}</td>
+                        <td className="py-3 text-slate-500 font-mono">{b.waktu}</td>
+                        <td className="py-3 text-center">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            {b.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -1004,51 +1138,83 @@ export const CommandCenterView: React.FC<CommandCenterViewProps> = ({
             </div>
 
             {/* 4 Akumulasi Metric Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
-              <div className="p-3.5 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10">
-                <span className="text-[10px] font-bold text-indigo-200 uppercase tracking-wider block">
-                  Total Pendukung Terdata
-                </span>
-                <span className="text-2xl font-black font-mono text-white mt-1 block">
-                  {(14850 + dptList.length).toLocaleString('id-ID')}
-                </span>
-                <span className="text-[10px] text-emerald-400 font-bold">
-                  +{dptList.length} dari e-KTP baru
-                </span>
-              </div>
+            {(() => {
+              const totalPendukung = dptList.length;
+              const targetKemenangan = 20000;
+              const pctTercapai = targetKemenangan > 0 ? ((totalPendukung / targetKemenangan) * 100).toFixed(1) : '0.0';
+              const pria = Math.round(totalPendukung * 0.486);
+              const wanita = Math.max(0, totalPendukung - pria);
+              const genZ = Math.round(totalPendukung * 0.32);
+              const milenial = Math.round(totalPendukung * 0.38);
+              const genX = Math.round(totalPendukung * 0.21);
+              const lansia = Math.max(0, totalPendukung - (genZ + milenial + genX));
 
-              <div className="p-3.5 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10">
-                <span className="text-[10px] font-bold text-indigo-200 uppercase tracking-wider block">
-                  Target Kemenangan
-                </span>
-                <span className="text-2xl font-black font-mono text-white mt-1 block">
-                  20.000
-                </span>
-                <span className="text-[10px] text-cyan-300 font-bold">
-                  {(((14850 + dptList.length) / 20000) * 100).toFixed(1)}% tercapai
-                </span>
-              </div>
+              return (
+                <>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
+                    <div className="p-3.5 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10">
+                      <span className="text-[10px] font-bold text-indigo-200 uppercase tracking-wider block">
+                        Total Pendukung Terdata
+                      </span>
+                      <span className="text-2xl font-black font-mono text-white mt-1 block">
+                        {totalPendukung.toLocaleString('id-ID')}
+                      </span>
+                      <span className="text-[10px] text-emerald-400 font-bold">
+                        {totalPendukung > 0 ? `+${totalPendukung} dari e-KTP baru` : 'Belum ada data'}
+                      </span>
+                    </div>
 
-              <div className="p-3.5 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10">
-                <span className="text-[10px] font-bold text-indigo-200 uppercase tracking-wider block">
-                  Pendukung Pria
-                </span>
-                <span className="text-2xl font-black font-mono text-cyan-300 mt-1 block">
-                  {Math.round((14850 + dptList.length) * 0.486).toLocaleString('id-ID')}
-                </span>
-                <span className="text-[10px] text-slate-300 font-mono">48.6% Total</span>
-              </div>
+                    <div className="p-3.5 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10">
+                      <span className="text-[10px] font-bold text-indigo-200 uppercase tracking-wider block">
+                        Target Kemenangan
+                      </span>
+                      <span className="text-2xl font-black font-mono text-white mt-1 block">
+                        {targetKemenangan.toLocaleString('id-ID')}
+                      </span>
+                      <span className="text-[10px] text-cyan-300 font-bold">
+                        {pctTercapai}% tercapai
+                      </span>
+                    </div>
 
-              <div className="p-3.5 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10">
-                <span className="text-[10px] font-bold text-indigo-200 uppercase tracking-wider block">
-                  Pendukung Wanita
-                </span>
-                <span className="text-2xl font-black font-mono text-rose-300 mt-1 block">
-                  {Math.round((14850 + dptList.length) * 0.514).toLocaleString('id-ID')}
-                </span>
-                <span className="text-[10px] text-slate-300 font-mono">51.4% Total</span>
-              </div>
-            </div>
+                    <div className="p-3.5 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10">
+                      <span className="text-[10px] font-bold text-indigo-200 uppercase tracking-wider block">
+                        Pendukung Pria
+                      </span>
+                      <span className="text-2xl font-black font-mono text-cyan-300 mt-1 block">
+                        {pria.toLocaleString('id-ID')}
+                      </span>
+                      <span className="text-[10px] text-slate-300 font-mono">
+                        {totalPendukung > 0 ? '48.6% Total' : '0%'}
+                      </span>
+                    </div>
+
+                    <div className="p-3.5 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10">
+                      <span className="text-[10px] font-bold text-indigo-200 uppercase tracking-wider block">
+                        Pendukung Wanita
+                      </span>
+                      <span className="text-2xl font-black font-mono text-rose-300 mt-1 block">
+                        {wanita.toLocaleString('id-ID')}
+                      </span>
+                      <span className="text-[10px] text-slate-300 font-mono">
+                        {totalPendukung > 0 ? '51.4% Total' : '0%'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {totalPendukung === 0 && (
+                    <div className="p-3.5 bg-white/10 backdrop-blur-md rounded-2xl border border-indigo-400/30 text-xs text-indigo-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mt-3">
+                      <span>Basis data pemetaan demografi &amp; alokasi logistik saat ini kosong (0 pendukung terdata). Data akan terisi secara otomatis saat kader mendaftarkan pemilih atau melakukan sinkronisasi DPT KPU.</span>
+                      <button
+                        onClick={() => setShowMonitoringModal(true)}
+                        className="px-3 py-1.5 bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-black rounded-xl text-xs shrink-0 cursor-pointer"
+                      >
+                        Buka Simulator
+                      </button>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </div>
 
           {/* Pemetaan Kelompok Umur & Jenis Kelamin Grid */}
@@ -1069,11 +1235,11 @@ export const CommandCenterView: React.FC<CommandCenterViewProps> = ({
                   <div className="flex items-center justify-between font-bold">
                     <span className="text-cyan-950 font-black">Gen Z (17 - 27 Tahun) · 32%</span>
                     <span className="font-mono text-cyan-800 font-black">
-                      {Math.round((14850 + dptList.length) * 0.32).toLocaleString('id-ID')} Jiwa
+                      {Math.round(dptList.length * 0.32).toLocaleString('id-ID')} Jiwa
                     </span>
                   </div>
                   <div className="w-full bg-cyan-200 rounded-full h-2 overflow-hidden">
-                    <div className="bg-cyan-600 h-full rounded-full" style={{ width: '32%' }}></div>
+                    <div className="bg-cyan-600 h-full rounded-full" style={{ width: dptList.length > 0 ? '32%' : '0%' }}></div>
                   </div>
                   <span className="text-[11px] text-slate-600 block">
                     <strong>Kebutuhan Logistik:</strong> Kaos model slim-fit, tote bag canvas, topi bucket, tumbler stainless, stiker hologram.
@@ -1085,11 +1251,11 @@ export const CommandCenterView: React.FC<CommandCenterViewProps> = ({
                   <div className="flex items-center justify-between font-bold">
                     <span className="text-indigo-950 font-black">Milenial (28 - 43 Tahun) · 38%</span>
                     <span className="font-mono text-indigo-800 font-black">
-                      {Math.round((14850 + dptList.length) * 0.38).toLocaleString('id-ID')} Jiwa
+                      {Math.round(dptList.length * 0.38).toLocaleString('id-ID')} Jiwa
                     </span>
                   </div>
                   <div className="w-full bg-indigo-200 rounded-full h-2 overflow-hidden">
-                    <div className="bg-indigo-600 h-full rounded-full" style={{ width: '38%' }}></div>
+                    <div className="bg-indigo-600 h-full rounded-full" style={{ width: dptList.length > 0 ? '38%' : '0%' }}></div>
                   </div>
                   <span className="text-[11px] text-slate-600 block">
                     <strong>Kebutuhan Logistik:</strong> Kaos polo kerah, rompi relawan, kalender saku, flyer program kerja ekonomi/UMKM.
@@ -1101,11 +1267,11 @@ export const CommandCenterView: React.FC<CommandCenterViewProps> = ({
                   <div className="flex items-center justify-between font-bold">
                     <span className="text-amber-950 font-black">Gen X (44 - 59 Tahun) · 21%</span>
                     <span className="font-mono text-amber-800 font-black">
-                      {Math.round((14850 + dptList.length) * 0.21).toLocaleString('id-ID')} Jiwa
+                      {Math.round(dptList.length * 0.21).toLocaleString('id-ID')} Jiwa
                     </span>
                   </div>
                   <div className="w-full bg-amber-200 rounded-full h-2 overflow-hidden">
-                    <div className="bg-amber-600 h-full rounded-full" style={{ width: '21%' }}></div>
+                    <div className="bg-amber-600 h-full rounded-full" style={{ width: dptList.length > 0 ? '21%' : '0%' }}></div>
                   </div>
                   <span className="text-[11px] text-slate-600 block">
                     <strong>Kebutuhan Logistik:</strong> Kaos katun ukuran L &amp; XL, payung lipat, mug keramik, kalender dinding.
@@ -1117,11 +1283,11 @@ export const CommandCenterView: React.FC<CommandCenterViewProps> = ({
                   <div className="flex items-center justify-between font-bold">
                     <span className="text-emerald-950 font-black">Baby Boomer &amp; Lansia (60+ Tahun) · 9%</span>
                     <span className="font-mono text-emerald-800 font-black">
-                      {Math.round((14850 + dptList.length) * 0.09).toLocaleString('id-ID')} Jiwa
+                      {Math.round(dptList.length * 0.09).toLocaleString('id-ID')} Jiwa
                     </span>
                   </div>
                   <div className="w-full bg-emerald-200 rounded-full h-2 overflow-hidden">
-                    <div className="bg-emerald-600 h-full rounded-full" style={{ width: '9%' }}></div>
+                    <div className="bg-emerald-600 h-full rounded-full" style={{ width: dptList.length > 0 ? '9%' : '0%' }}></div>
                   </div>
                   <span className="text-[11px] text-slate-600 block">
                     <strong>Kebutuhan Logistik:</strong> Paket sembako peduli lansia, sarung, obat herbal/tensi, armada jemputan TPS.
@@ -1154,16 +1320,20 @@ export const CommandCenterView: React.FC<CommandCenterViewProps> = ({
                       <Shirt className="w-4 h-4 text-cyan-600" />
                       <span>Kaos Kampanye (S, M, L, XL, XXL)</span>
                     </span>
-                    <span className="font-mono">12.000 / {(14850 + dptList.length).toLocaleString('id-ID')} Pcs</span>
+                    <span className="font-mono">
+                      {dptList.length > 0 ? `12.000 / ${dptList.length.toLocaleString('id-ID')} Pcs` : '0 / 0 Pcs'}
+                    </span>
                   </div>
                   <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
                     <div
                       className="bg-cyan-600 h-full rounded-full"
-                      style={{ width: `${Math.min(100, (12000 / (14850 + dptList.length)) * 100)}%` }}
+                      style={{ width: dptList.length > 0 ? `${Math.min(100, (12000 / dptList.length) * 100)}%` : '0%' }}
                     ></div>
                   </div>
-                  <span className="text-[10px] text-amber-700 font-bold block">
-                    Defisit {(Math.max(0, 14850 + dptList.length - 12000)).toLocaleString('id-ID')} Pcs · Perlu PO Tambahan
+                  <span className="text-[10px] text-slate-500 font-medium block">
+                    {dptList.length > 0
+                      ? `Defisit ${(Math.max(0, dptList.length - 12000)).toLocaleString('id-ID')} Pcs · Perlu PO Tambahan`
+                      : 'Menunggu pendaftaran pemilih TPS'}
                   </span>
                 </div>
 
@@ -1174,13 +1344,15 @@ export const CommandCenterView: React.FC<CommandCenterViewProps> = ({
                       <span className="text-sm">🧕</span>
                       <span>Jilbab &amp; Kerudung Seragam Relawati</span>
                     </span>
-                    <span className="font-mono">8.000 / {Math.round((14850 + dptList.length) * 0.514).toLocaleString('id-ID')} Pcs</span>
+                    <span className="font-mono">
+                      {dptList.length > 0 ? `8.000 / ${Math.round(dptList.length * 0.514).toLocaleString('id-ID')} Pcs` : '0 / 0 Pcs'}
+                    </span>
                   </div>
                   <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                    <div className="bg-rose-500 h-full rounded-full" style={{ width: '100%' }}></div>
+                    <div className="bg-rose-500 h-full rounded-full" style={{ width: dptList.length > 0 ? '100%' : '0%' }}></div>
                   </div>
                   <span className="text-[10px] text-emerald-700 font-bold block">
-                    Stok Aman (100% Siap Distribusi ke Kelurahan)
+                    {dptList.length > 0 ? 'Stok Aman (100% Siap Distribusi ke Kelurahan)' : 'Stok siap didistribusikan saat target terisi'}
                   </span>
                 </div>
 
@@ -1214,7 +1386,7 @@ export const CommandCenterView: React.FC<CommandCenterViewProps> = ({
                     <div className="bg-emerald-600 h-full rounded-full" style={{ width: '85%' }}></div>
                   </div>
                   <span className="text-[10px] text-amber-700 font-bold block">
-                    Defisit 500 Paket untuk Prioritas Lansia RW 04 &amp; RW 07
+                    Alokasi siap distribusi untuk kegiatan bakti sosial
                   </span>
                 </div>
               </div>
@@ -1322,29 +1494,47 @@ export const CommandCenterView: React.FC<CommandCenterViewProps> = ({
             </div>
 
             <div className="space-y-2 text-xs">
-              {surveyList.map((s) => (
-                <div key={s.id} className="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between gap-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-extrabold text-slate-900">{s.voterNama}</span>
-                      <span className="text-[10px] font-mono text-slate-400">{s.voterNikMasked}</span>
-                      <span className="text-[10px] bg-cyan-100 text-cyan-800 px-2 py-0.5 rounded-full font-bold">
-                        {s.tps} · {s.kelurahan}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-600 mt-1">
-                      Pilihan: <strong>{s.pilihanKandidat}</strong> · Kemantapan: <span className="text-cyan-700 font-bold">{s.tingkatKemantapan}</span>
-                    </p>
-                  </div>
-
-                  <div className="text-right shrink-0">
-                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
-                      {s.statusSinkron}
-                    </span>
-                    <span className="text-[10px] text-slate-400 block mt-1">{s.waktu}</span>
-                  </div>
+              {surveyList.length === 0 ? (
+                <div className="p-8 text-center bg-slate-50/60 rounded-2xl border border-slate-200 text-slate-500 space-y-2">
+                  <Vote className="w-8 h-8 text-slate-300 mx-auto" />
+                  <p className="text-sm font-bold text-slate-700">Belum Ada Data Survei Elektabilitas</p>
+                  <p className="text-xs text-slate-400 max-w-md mx-auto">
+                    Data survei lapangan masih kosong. Kader dan relawan dapat menginput respon survei warga secara online maupun offline melalui tombol di bawah.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowSurveyModal(true)}
+                    className="mt-2 px-3.5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl text-xs cursor-pointer inline-flex items-center gap-1.5"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+ Input Survei Lapangan Baru</span>
+                  </button>
                 </div>
-              ))}
+              ) : (
+                surveyList.map((s) => (
+                  <div key={s.id} className="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-extrabold text-slate-900">{s.voterNama}</span>
+                        <span className="text-[10px] font-mono text-slate-400">{s.voterNikMasked}</span>
+                        <span className="text-[10px] bg-cyan-100 text-cyan-800 px-2 py-0.5 rounded-full font-bold">
+                          {s.tps} · {s.kelurahan}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-600 mt-1">
+                        Pilihan: <strong>{s.pilihanKandidat}</strong> · Kemantapan: <span className="text-cyan-700 font-bold">{s.tingkatKemantapan}</span>
+                      </p>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                        {s.statusSinkron}
+                      </span>
+                      <span className="text-[10px] text-slate-400 block mt-1">{s.waktu}</span>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
