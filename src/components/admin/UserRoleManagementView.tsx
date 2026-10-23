@@ -12,6 +12,9 @@ import {
   XCircle,
   Trash2,
   Edit2,
+  RotateCcw,
+  Copy,
+  CheckCheck,
   MessageSquare,
   KeyRound,
   MapPin,
@@ -56,6 +59,12 @@ export const UserRoleManagementView: React.FC<UserRoleManagementViewProps> = ({
   const [editNoHp, setEditNoHp] = useState('');
   const [editStatus, setEditStatus] = useState<'Aktif' | 'Nonaktif'>('Aktif');
   const [editError, setEditError] = useState<string | null>(null);
+
+  // Reset Password Modal State
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [resettingUser, setResettingUser] = useState<UserAccount | null>(null);
+  const [newPasswordValue, setNewPasswordValue] = useState('');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Add Form State
   const [formRole, setFormRole] = useState<'tim_sukses' | 'kader' | 'admin'>('tim_sukses');
@@ -227,6 +236,39 @@ export const UserRoleManagementView: React.FC<UserRoleManagementViewProps> = ({
     setIsEditModalOpen(false);
   };
 
+  const handleOpenResetModal = (user: UserAccount) => {
+    setResettingUser(user);
+    setNewPasswordValue(user.password || '123456');
+    setIsResetModalOpen(true);
+  };
+
+  const handleGenerateRandomPin = () => {
+    const randomPin = String(Math.floor(100000 + Math.random() * 900000));
+    setNewPasswordValue(randomPin);
+  };
+
+  const handleSubmitResetPassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resettingUser) return;
+    if (!newPasswordValue.trim()) return;
+
+    const updatedUser: UserAccount = {
+      ...resettingUser,
+      password: newPasswordValue.trim(),
+    };
+
+    if (onUpdateUser) {
+      onUpdateUser(updatedUser);
+    }
+    setIsResetModalOpen(false);
+  };
+
+  const handleCopyText = (text: string, id: string) => {
+    navigator.clipboard?.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
   const getRoleBadge = (role: UserRole) => {
     switch (role) {
       case 'super_admin':
@@ -276,7 +318,7 @@ export const UserRoleManagementView: React.FC<UserRoleManagementViewProps> = ({
           <div>
             <div className="flex items-center gap-2 mb-2">
               <span className="text-[10px] font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/40 px-2.5 py-0.5 rounded-full font-mono">
-                MODUL 08 · KHUSUS SUPER ADMIN
+                KHUSUS SUPER ADMIN
               </span>
               <span className="text-xs text-slate-300 font-bold flex items-center gap-1">
                 <Sparkles className="w-3.5 h-3.5 text-amber-300" />
@@ -414,7 +456,8 @@ export const UserRoleManagementView: React.FC<UserRoleManagementViewProps> = ({
             <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold">
               <tr>
                 <th className="p-3.5">Pengguna &amp; Identitas</th>
-                <th className="p-3.5">Role / Tingkatan</th>
+                <th className="p-3.5">Role</th>
+                <th className="p-3.5 bg-purple-50/60 text-purple-900 font-bold">Username &amp; Password (Kredensial)</th>
                 <th className="p-3.5">Jabatan &amp; Posisi</th>
                 <th className="p-3.5">Wilayah Tugas &amp; TPS</th>
                 <th className="p-3.5">Kontak WhatsApp</th>
@@ -425,7 +468,7 @@ export const UserRoleManagementView: React.FC<UserRoleManagementViewProps> = ({
             <tbody className="divide-y divide-slate-100">
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-slate-400">
+                  <td colSpan={8} className="p-8 text-center text-slate-400">
                     Tidak ada akun pengguna yang sesuai dengan filter pencarian.
                   </td>
                 </tr>
@@ -437,7 +480,7 @@ export const UserRoleManagementView: React.FC<UserRoleManagementViewProps> = ({
 
                   return (
                     <tr key={user.id} className="hover:bg-slate-50/70 transition-colors">
-                      {/* Name & Username */}
+                      {/* Name & Identitas */}
                       <td className="p-3.5">
                         <div className="flex items-center gap-3">
                           <img
@@ -457,8 +500,8 @@ export const UserRoleManagementView: React.FC<UserRoleManagementViewProps> = ({
                                 </span>
                               )}
                             </div>
-                            <span className="text-[11px] text-slate-500 font-mono block">
-                              @{user.username}
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              ID: {user.id.slice(-6)}
                             </span>
                           </div>
                         </div>
@@ -466,6 +509,49 @@ export const UserRoleManagementView: React.FC<UserRoleManagementViewProps> = ({
 
                       {/* Role */}
                       <td className="p-3.5">{getRoleBadge(user.role)}</td>
+
+                      {/* Username & Password (Terlihat Langsung Khusus Super Admin) */}
+                      <td className="p-3.5 bg-purple-50/20">
+                        <div className="space-y-1.5 min-w-[170px]">
+                          <div className="flex items-center justify-between bg-white px-2 py-1 rounded-lg border border-slate-200 shadow-2xs">
+                            <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">User:</span>
+                            <span className="font-mono font-bold text-slate-900 text-xs">@{user.username}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopyText(user.username, `u-${user.id}`)}
+                              className="text-slate-400 hover:text-cyan-700 ml-1 cursor-pointer p-0.5"
+                              title="Salin Username"
+                            >
+                              {copiedId === `u-${user.id}` ? (
+                                <CheckCheck className="w-3.5 h-3.5 text-emerald-600" />
+                              ) : (
+                                <Copy className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                          </div>
+                          <div className="flex items-center justify-between bg-purple-50 px-2 py-1 rounded-lg border border-purple-200 shadow-2xs">
+                            <div className="flex items-center gap-1">
+                              <KeyRound className="w-3 h-3 text-purple-600 shrink-0" />
+                              <span className="text-[9px] text-purple-600 font-bold uppercase tracking-wider">Pass:</span>
+                            </div>
+                            <span className="font-mono font-black text-purple-950 text-xs tracking-wider">
+                              {user.password || '123456'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopyText(user.password || '123456', `p-${user.id}`)}
+                              className="text-purple-400 hover:text-purple-700 ml-1 cursor-pointer p-0.5"
+                              title="Salin Password"
+                            >
+                              {copiedId === `p-${user.id}` ? (
+                                <CheckCheck className="w-3.5 h-3.5 text-emerald-600" />
+                              ) : (
+                                <Copy className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </td>
 
                       {/* Jabatan */}
                       <td className="p-3.5">
@@ -542,9 +628,17 @@ export const UserRoleManagementView: React.FC<UserRoleManagementViewProps> = ({
                             type="button"
                             onClick={() => handleOpenEditModal(user)}
                             className="p-1.5 text-cyan-700 hover:text-cyan-950 hover:bg-cyan-50 rounded-lg transition-colors cursor-pointer"
-                            title="Edit Akun, Role & Kredensial"
+                            title="Edit Data User"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenResetModal(user)}
+                            className="p-1.5 text-purple-700 hover:text-purple-950 hover:bg-purple-50 rounded-lg transition-colors cursor-pointer"
+                            title="Reset Password Akun"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
                           </button>
                           {isProtectedSuperAdmin || isCurrent ? (
                             <span className="text-[10px] text-slate-400 font-mono px-1">Dilindungi</span>
@@ -1029,6 +1123,105 @@ export const UserRoleManagementView: React.FC<UserRoleManagementViewProps> = ({
                 >
                   <Check className="w-4 h-4" />
                   <span>Simpan Perubahan</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Reset Password Pengguna */}
+      {isResetModalOpen && resettingUser && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 space-y-4 shadow-2xl border border-slate-200 my-auto animate-in fade-in zoom-in-95 duration-200 text-left">
+            {/* Header */}
+            <div className="flex items-start justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center shadow-xs">
+                  <RotateCcw className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-slate-900 leading-tight">
+                    Reset Password Pengguna
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Ubah password akses untuk {resettingUser.nama}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsResetModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* User Credential Info Box */}
+            <div className="p-3.5 bg-purple-50/70 rounded-2xl border border-purple-200 space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-600 font-medium">Nama Akun:</span>
+                <span className="font-bold text-slate-900">{resettingUser.nama}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-600 font-medium">Username Login:</span>
+                <span className="font-mono font-bold text-purple-950">@{resettingUser.username}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-600 font-medium">Password Saat Ini:</span>
+                <span className="font-mono font-black text-slate-900 bg-white px-2 py-0.5 rounded border border-purple-200">
+                  {resettingUser.password || '123456'}
+                </span>
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmitResetPassword} className="space-y-4">
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-bold text-slate-700">
+                    Password / PIN Baru
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleGenerateRandomPin}
+                    className="text-[11px] font-bold text-purple-700 hover:text-purple-900 flex items-center gap-1 cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Acak PIN 6-Digit</span>
+                  </button>
+                </div>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={newPasswordValue}
+                    onChange={(e) => setNewPasswordValue(e.target.value)}
+                    required
+                    placeholder="Masukkan password baru..."
+                    className="w-full px-3.5 py-2.5 pl-9 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono font-bold text-slate-900 focus:outline-hidden focus:border-purple-600 focus:bg-white"
+                  />
+                  <KeyRound className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Setelah disimpan, user wajib memasukkan password baru ini untuk login. Password lama otomatis tidak berlaku.
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsResetModalOpen(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 text-white font-black rounded-xl text-xs shadow-md transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Simpan Password Baru</span>
                 </button>
               </div>
             </form>

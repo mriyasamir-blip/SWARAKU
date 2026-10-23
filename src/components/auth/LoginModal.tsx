@@ -37,7 +37,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const accountsPool = userAccounts && userAccounts.length > 0 ? userAccounts : PRESET_ACCOUNTS;
   const [selectedRole, setSelectedRole] = useState<UserRole>('super_admin');
   const [emailOrUsername, setEmailOrUsername] = useState('superadmin@swaraku.com');
-  const [password, setPassword] = useState('swaraku2026');
+  const [password, setPassword] = useState('123456');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -50,19 +50,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     const firstAcc = accountsPool.find((acc) => acc.role === role && acc.status !== 'Nonaktif');
     if (firstAcc) {
       setEmailOrUsername(firstAcc.username);
-      setPassword(firstAcc.password || '123456');
+      setPassword(firstAcc.password || '');
     } else if (role === 'super_admin') {
       setEmailOrUsername('superadmin@swaraku.com');
-      setPassword('swaraku2026');
+      setPassword('123456');
     } else if (role === 'admin') {
       setEmailOrUsername('admin@swaraku.com');
-      setPassword('swaraku2026');
+      setPassword('123456');
     } else if (role === 'tim_sukses') {
       setEmailOrUsername('timsukses@swaraku.com');
-      setPassword('swaraku2026');
+      setPassword('123456');
     } else {
       setEmailOrUsername('kader@swaraku.com');
-      setPassword('swaraku2026');
+      setPassword('123456');
     }
   };
 
@@ -86,7 +86,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       }
 
       const expectedPassword = match.password || '123456';
-      if (password !== expectedPassword && password !== 'swaraku2026') {
+      if (password !== expectedPassword) {
         setErrorMsg('Password salah! Password tidak sesuai dengan data terdaftar di Super Admin.');
         setLoading(false);
         return;
@@ -150,7 +150,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               <Shield className="w-3.5 h-3.5" />
             </div>
             <span className="text-[8px] font-bold uppercase tracking-wider text-purple-800 block">
-              8 MODUL
+              SUPER ADMIN
             </span>
             <h3 className="text-xs font-black text-slate-900 leading-tight">
               Super Admin
@@ -174,7 +174,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               <ShieldCheck className="w-3.5 h-3.5" />
             </div>
             <span className="text-[8px] font-bold uppercase tracking-wider text-teal-800 block">
-              7 MODUL
+              ADMIN
             </span>
             <h3 className="text-xs font-black text-slate-900 leading-tight">
               Admin
@@ -251,9 +251,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           </div>
           <span className="text-[10px] font-semibold text-teal-800 bg-teal-100 px-2 py-0.5 rounded-md">
             {selectedRole === 'super_admin'
-              ? 'Super Admin (8 Modul)'
+              ? 'Super Admin'
               : selectedRole === 'admin'
-              ? 'Admin (7 Modul)'
+              ? 'Admin'
               : selectedRole === 'tim_sukses'
               ? 'Tim Sukses'
               : 'Kader Lapangan'}
@@ -288,9 +288,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="font-bold text-slate-800">Kata Sandi</label>
-              <span className="text-[10px] text-slate-400 font-mono">
-                default: swaraku2026
-              </span>
             </div>
             <div className="relative">
               <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />

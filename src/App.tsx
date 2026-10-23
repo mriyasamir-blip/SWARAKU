@@ -294,9 +294,9 @@ export default function App() {
     showToast(
       `👋 Masuk sebagai ${account.nama} (${
         account.role === 'super_admin'
-          ? 'Super Admin (8 Modul Lengkap)'
+          ? 'Super Admin'
           : account.role === 'admin'
-          ? 'Admin (7 Modul Operasional)'
+          ? 'Admin'
           : account.role === 'tim_sukses'
           ? 'Tim Sukses'
           : 'Kader Lapangan'

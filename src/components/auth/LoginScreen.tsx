@@ -36,7 +36,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   const accountsPool = userAccounts && userAccounts.length > 0 ? userAccounts : PRESET_ACCOUNTS;
   const [selectedRole, setSelectedRole] = useState<UserRole>('super_admin');
   const [usernameOrEmail, setUsernameOrEmail] = useState('superadmin');
-  const [password, setPassword] = useState('swaraku2026');
+  const [password, setPassword] = useState('123456');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
@@ -48,19 +48,19 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     const firstAcc = accountsPool.find((acc) => acc.role === role && acc.status !== 'Nonaktif');
     if (firstAcc) {
       setUsernameOrEmail(firstAcc.username);
-      setPassword(firstAcc.password || '123456');
+      setPassword(firstAcc.password || '');
     } else if (role === 'super_admin') {
       setUsernameOrEmail('superadmin');
-      setPassword('swaraku2026');
+      setPassword('123456');
     } else if (role === 'admin') {
       setUsernameOrEmail('admin');
-      setPassword('swaraku2026');
+      setPassword('123456');
     } else if (role === 'tim_sukses') {
       setUsernameOrEmail('timsukses');
-      setPassword('swaraku2026');
+      setPassword('123456');
     } else {
       setUsernameOrEmail('kader');
-      setPassword('swaraku2026');
+      setPassword('123456');
     }
   };
 
@@ -91,9 +91,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         return;
       }
 
-      // Verifikasi password persis dengan data di Super Admin
+      // Verifikasi password persis dengan data di Super Admin (tidak ada backdoor)
       const expectedPassword = match.password || '123456';
-      if (password !== expectedPassword && password !== 'swaraku2026') {
+      if (password !== expectedPassword) {
         setErrorMessage(
           'Password salah! Password tidak sesuai dengan data yang didaftarkan Super Admin.'
         );
@@ -172,7 +172,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               </div>
               <div>
                 <span className="text-[8px] font-extrabold uppercase tracking-wider text-purple-800 block">
-                  8 MODUL
+                  SUPER ADMIN
                 </span>
                 <h3 className="text-xs font-black text-slate-900 leading-tight">
                   Super Admin
@@ -206,7 +206,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               </div>
               <div>
                 <span className="text-[8px] font-extrabold uppercase tracking-wider text-teal-800 block">
-                  7 MODUL
+                  ADMIN
                 </span>
                 <h3 className="text-xs font-black text-slate-900 leading-tight">
                   Admin
@@ -303,9 +303,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             <span className="text-xs font-bold text-slate-800">
               Akses:{' '}
               {selectedRole === 'super_admin'
-                ? 'Super Admin (8 Modul + Role User)'
+                ? 'Super Admin (Otoritas Sistem Penuh)'
                 : selectedRole === 'admin'
-                ? 'Admin (7 Modul Operasional)'
+                ? 'Admin Operasional'
                 : selectedRole === 'tim_sukses'
                 ? 'Tim Sukses (Mobilisasi & Data)'
                 : 'Kader Lapangan (Input & C1/B1)'}
@@ -357,9 +357,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               <label className="text-xs font-bold text-slate-700">
                 Kata Sandi
               </label>
-              <span className="text-[10px] text-slate-400 font-mono">
-                demo: swaraku2026
-              </span>
             </div>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -383,7 +380,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             </div>
           </div>
 
-          {/* Remember me & Helper */}
+          {/* Remember me */}
           <div className="flex items-center justify-between text-xs pt-0.5">
             <label className="flex items-center gap-2 cursor-pointer select-none text-slate-600 font-medium">
               <input
@@ -394,7 +391,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               />
               <span>Ingat sesi masuk</span>
             </label>
-            <span className="text-[11px] text-slate-400">PIN Enkripsi KPU</span>
           </div>
 
           {/* Submit Login Button */}
@@ -433,7 +429,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           <span>Sistem Terenkripsi SSL 256-Bit · Hak Cipta SWARAKU 2026</span>
         </div>
         <p className="text-[10px] text-slate-400">
-          Akun Admin: 7 Modul Lengkap · Tim Sukses: Database &amp; AI Pilcaleg · Kader: Beranda &amp; Profil
+          Sistem Pemenangan Pemilu Terintegrasi SWARAKU
         </p>
       </div>
     </div>

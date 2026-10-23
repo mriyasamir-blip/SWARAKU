@@ -199,7 +199,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
               <p className="text-[11px] text-slate-500 font-medium hidden sm:block">
                 {isSuperAdmin
                   ? 'Pusat Komando & Manajemen Role User Tim Sukses & Kader'
-                  : 'Pusat Komando & Pengendalian Terpadu 7 Modul Pemenangan'}
+                  : 'Pusat Komando & Pengendalian Terpadu Sistem Pemenangan'}
               </p>
             </div>
           </div>
