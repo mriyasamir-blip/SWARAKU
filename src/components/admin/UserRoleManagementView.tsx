@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   XCircle,
   Trash2,
+  Edit2,
   MessageSquare,
   KeyRound,
   MapPin,
@@ -25,6 +26,7 @@ interface UserRoleManagementViewProps {
   userAccounts: UserAccount[];
   currentUser: UserAccount;
   onAddUser: (user: UserAccount) => void;
+  onUpdateUser?: (user: UserAccount) => void;
   onDeleteUser: (userId: string) => void;
   onToggleUserStatus: (userId: string) => void;
 }
@@ -33,12 +35,27 @@ export const UserRoleManagementView: React.FC<UserRoleManagementViewProps> = ({
   userAccounts,
   currentUser,
   onAddUser,
+  onUpdateUser,
   onDeleteUser,
   onToggleUserStatus,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | UserRole>('all');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  // Edit Modal State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [editRole, setEditRole] = useState<UserRole>('tim_sukses');
+  const [editNama, setEditNama] = useState('');
+  const [editUsername, setEditUsername] = useState('');
+  const [editPassword, setEditPassword] = useState('');
+  const [editJabatan, setEditJabatan] = useState('');
+  const [editWilayah, setEditWilayah] = useState('');
+  const [editTps, setEditTps] = useState('');
+  const [editNoHp, setEditNoHp] = useState('');
+  const [editStatus, setEditStatus] = useState<'Aktif' | 'Nonaktif'>('Aktif');
+  const [editError, setEditError] = useState<string | null>(null);
 
   // Add Form State
   const [formRole, setFormRole] = useState<'tim_sukses' | 'kader' | 'admin'>('tim_sukses');
@@ -152,6 +169,62 @@ export const UserRoleManagementView: React.FC<UserRoleManagementViewProps> = ({
 
     onAddUser(newAccount);
     setIsAddModalOpen(false);
+  };
+
+  const handleOpenEditModal = (user: UserAccount) => {
+    setEditingUserId(user.id);
+    setEditRole(user.role);
+    setEditNama(user.nama);
+    setEditUsername(user.username);
+    setEditPassword(user.password || '123456');
+    setEditJabatan(user.jabatan || '');
+    setEditWilayah(user.wilayah || 'DAPIL DKI JAKARTA II');
+    setEditTps(user.tps || 'TPS 048');
+    setEditNoHp(user.noHp || '');
+    setEditStatus(user.status || 'Aktif');
+    setEditError(null);
+    setIsEditModalOpen(true);
+  };
+
+  const handleSubmitEditUser = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUserId) return;
+    if (!editNama.trim() || !editUsername.trim()) {
+      setEditError('Nama Lengkap dan Username wajib diisi.');
+      return;
+    }
+
+    const cleanUsername = editUsername.trim().toLowerCase().replace(/\s+/g, '');
+    const isDuplicate = userAccounts.some(
+      (u) => u.id !== editingUserId && u.username.toLowerCase() === cleanUsername
+    );
+
+    if (isDuplicate) {
+      setEditError(`Username "${cleanUsername}" sudah digunakan akun lain. Silakan pilih username unik.`);
+      return;
+    }
+
+    const targetUser = userAccounts.find((u) => u.id === editingUserId);
+    if (!targetUser) return;
+
+    const updatedAccount: UserAccount = {
+      ...targetUser,
+      role: editRole,
+      nama: editNama.trim(),
+      username: cleanUsername,
+      email: `${cleanUsername}@swaraku.com`,
+      password: editPassword.trim() || targetUser.password || '123456',
+      jabatan: editJabatan.trim() || targetUser.jabatan,
+      wilayah: editWilayah.trim() || targetUser.wilayah,
+      tps: editRole === 'kader' ? (editTps.trim() || 'TPS 048') : undefined,
+      noHp: editNoHp.trim() || targetUser.noHp,
+      status: editStatus,
+    };
+
+    if (onUpdateUser) {
+      onUpdateUser(updatedAccount);
+    }
+    setIsEditModalOpen(false);
   };
 
   const getRoleBadge = (role: UserRole) => {
@@ -464,22 +537,32 @@ export const UserRoleManagementView: React.FC<UserRoleManagementViewProps> = ({
 
                       {/* Actions */}
                       <td className="p-3.5 text-center">
-                        {isProtectedSuperAdmin || isCurrent ? (
-                          <span className="text-[10px] text-slate-400 font-mono">Dilindungi</span>
-                        ) : (
+                        <div className="flex items-center justify-center gap-1">
                           <button
                             type="button"
-                            onClick={() => {
-                              if (confirm(`Yakin ingin menghapus akun "${user.nama}" (@${user.username})? Tindakan ini tidak dapat dibatalkan.`)) {
-                                onDeleteUser(user.id);
-                              }
-                            }}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                            title="Hapus Akun Pengguna"
+                            onClick={() => handleOpenEditModal(user)}
+                            className="p-1.5 text-cyan-700 hover:text-cyan-950 hover:bg-cyan-50 rounded-lg transition-colors cursor-pointer"
+                            title="Edit Akun, Role & Kredensial"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Edit2 className="w-3.5 h-3.5" />
                           </button>
-                        )}
+                          {isProtectedSuperAdmin || isCurrent ? (
+                            <span className="text-[10px] text-slate-400 font-mono px-1">Dilindungi</span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (confirm(`Yakin ingin menghapus akun "${user.nama}" (@${user.username})? Tindakan ini tidak dapat dibatalkan.`)) {
+                                  onDeleteUser(user.id);
+                                }
+                              }}
+                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                              title="Hapus Akun Pengguna"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -704,6 +787,248 @@ export const UserRoleManagementView: React.FC<UserRoleManagementViewProps> = ({
                 >
                   <Check className="w-4 h-4" />
                   <span>Daftarkan Akun</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Edit User & Kredensial */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-6 space-y-4 shadow-2xl border border-slate-200 my-auto animate-in fade-in zoom-in-95 duration-200 max-h-[92vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-start justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-cyan-600 to-teal-600 text-white flex items-center justify-center shadow-xs">
+                  <Edit2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-slate-900 leading-tight">
+                    Edit Akun &amp; Kredensial Pengguna
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Perubahan data akun langsung tersinkronisasi saat pengguna melakukan login
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Error Message */}
+            {editError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-bold flex items-center gap-2">
+                <XCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                <span>{editError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmitEditUser} className="space-y-4 text-left">
+              {/* Role Selection */}
+              <div>
+                <label className="text-[11px] font-bold text-slate-700 block mb-1.5">
+                  Tingkatan Role / Akses
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditRole('tim_sukses')}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      editRole === 'tim_sukses'
+                        ? 'border-cyan-600 bg-cyan-50 text-cyan-900 font-bold ring-2 ring-cyan-500/20'
+                        : 'border-slate-200 hover:border-slate-300 text-slate-700'
+                    }`}
+                  >
+                    <Building2 className="w-4 h-4 text-cyan-600 mb-1" />
+                    <span className="text-xs block font-bold">Tim Sukses</span>
+                    <span className="text-[10px] text-slate-500">Akses Bappilu &amp; Peta</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setEditRole('kader')}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      editRole === 'kader'
+                        ? 'border-emerald-600 bg-emerald-50 text-emerald-900 font-bold ring-2 ring-emerald-500/20'
+                        : 'border-slate-200 hover:border-slate-300 text-slate-700'
+                    }`}
+                  >
+                    <UserCheck className="w-4 h-4 text-emerald-600 mb-1" />
+                    <span className="text-xs block font-bold">Kader Saksi</span>
+                    <span className="text-[10px] text-slate-500">Input KTP &amp; Form C1</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setEditRole('admin')}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      editRole === 'admin'
+                        ? 'border-teal-600 bg-teal-50 text-teal-900 font-bold ring-2 ring-teal-500/20'
+                        : 'border-slate-200 hover:border-slate-300 text-slate-700'
+                    }`}
+                  >
+                    <Shield className="w-4 h-4 text-teal-600 mb-1" />
+                    <span className="text-xs block font-bold">Admin</span>
+                    <span className="text-[10px] text-slate-500">7 Modul Operasional</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Status Akun */}
+              <div>
+                <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                  Status Akses Akun
+                </label>
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-2 text-xs font-semibold text-slate-800 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="editStatus"
+                      checked={editStatus === 'Aktif'}
+                      onChange={() => setEditStatus('Aktif')}
+                      className="accent-emerald-600"
+                    />
+                    <span className="text-emerald-700 font-bold">Aktif (Dapat Login)</span>
+                  </label>
+                  <label className="flex items-center gap-2 text-xs font-semibold text-slate-800 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="editStatus"
+                      checked={editStatus === 'Nonaktif'}
+                      onChange={() => setEditStatus('Nonaktif')}
+                      className="accent-rose-600"
+                    />
+                    <span className="text-rose-700 font-bold">Nonaktif (Blokir Login)</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Nama Lengkap & Username */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                    Nama Lengkap <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editNama}
+                    onChange={(e) => setEditNama(e.target.value)}
+                    required
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs focus:outline-hidden focus:border-cyan-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                    Username Login <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editUsername}
+                    onChange={(e) => setEditUsername(e.target.value)}
+                    required
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs font-mono focus:outline-hidden focus:border-cyan-500"
+                  />
+                </div>
+              </div>
+
+              {/* Password & WhatsApp */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                    Password / PIN Login
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={editPassword}
+                      onChange={(e) => setEditPassword(e.target.value)}
+                      placeholder="Password login akun"
+                      className="w-full px-3 py-2 pl-8 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs font-mono focus:outline-hidden focus:border-cyan-500"
+                    />
+                    <KeyRound className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                    Nomor WhatsApp / HP
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="tel"
+                      value={editNoHp}
+                      onChange={(e) => setEditNoHp(e.target.value)}
+                      placeholder="Contoh: 0812XXXXXXXX"
+                      className="w-full px-3 py-2 pl-8 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs font-mono focus:outline-hidden focus:border-cyan-500"
+                    />
+                    <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Jabatan & Wilayah */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                    Jabatan / Posisi
+                  </label>
+                  <input
+                    type="text"
+                    value={editJabatan}
+                    onChange={(e) => setEditJabatan(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs focus:outline-hidden focus:border-cyan-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                    Wilayah Penugasan
+                  </label>
+                  <input
+                    type="text"
+                    value={editWilayah}
+                    onChange={(e) => setEditWilayah(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs focus:outline-hidden focus:border-cyan-500"
+                  />
+                </div>
+              </div>
+
+              {/* TPS Penugasan (Khusus Kader) */}
+              {editRole === 'kader' && (
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                    Nomor TPS Penugasan Saksi
+                  </label>
+                  <input
+                    type="text"
+                    value={editTps}
+                    onChange={(e) => setEditTps(e.target.value)}
+                    placeholder="Contoh: TPS 048"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs font-bold focus:outline-hidden focus:border-cyan-500"
+                  />
+                </div>
+              )}
+
+              {/* Submit Buttons */}
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-700 hover:to-teal-700 text-white font-black rounded-xl text-xs shadow-md transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Simpan Perubahan</span>
                 </button>
               </div>
             </form>

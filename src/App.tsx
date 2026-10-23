@@ -251,6 +251,23 @@ export default function App() {
     showToast('🔄 Status akun berhasil diubah.');
   };
 
+  const handleUpdateUser = (updatedUser: UserAccount) => {
+    setUserAccounts((prev) => {
+      const updated = prev.map((u) => (u.id === updatedUser.id ? updatedUser : u));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('swaraku_user_accounts', JSON.stringify(updated));
+      }
+      return updated;
+    });
+    if (currentUser && currentUser.id === updatedUser.id) {
+      setCurrentUser(updatedUser);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('swaraku_current_user', JSON.stringify(updatedUser));
+      }
+    }
+    showToast(`✅ Akun "${updatedUser.nama}" (@${updatedUser.username}) berhasil diperbarui!`);
+  };
+
   // Kader Lapangan State
   const [kaderPoints, setKaderPoints] = useState<number>(0);
 
@@ -791,6 +808,7 @@ export default function App() {
               onLogin={handleLogin}
               deviceOS={deviceOS}
               onOpenWebsite={handleOpenWebsite}
+              userAccounts={userAccounts}
             />
           </MobileFrame>
         ) : (currentUser.role === 'admin' || currentUser.role === 'super_admin') ? (
@@ -830,6 +848,7 @@ export default function App() {
             onOpenWebsite={handleOpenWebsite}
             userAccounts={userAccounts}
             onAddUser={handleAddUser}
+            onUpdateUser={handleUpdateUser}
             onDeleteUser={handleDeleteUser}
             onToggleUserStatus={handleToggleUserStatus}
           />
@@ -982,6 +1001,7 @@ export default function App() {
         onClose={() => setLoginModalOpen(false)}
         currentUser={currentUser}
         onLogin={handleLogin}
+        userAccounts={userAccounts}
       />
 
       <PendaftaranVoterOcrModal

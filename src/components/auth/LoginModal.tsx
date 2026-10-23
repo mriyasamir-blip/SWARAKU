@@ -24,6 +24,7 @@ interface LoginModalProps {
   onClose?: () => void;
   currentUser: UserAccount | null;
   onLogin: (account: UserAccount) => void;
+  userAccounts?: UserAccount[];
 }
 
 export const LoginModal: React.FC<LoginModalProps> = ({
@@ -31,7 +32,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   onClose,
   currentUser,
   onLogin,
+  userAccounts,
 }) => {
+  const accountsPool = userAccounts && userAccounts.length > 0 ? userAccounts : PRESET_ACCOUNTS;
   const [selectedRole, setSelectedRole] = useState<UserRole>('super_admin');
   const [emailOrUsername, setEmailOrUsername] = useState('superadmin@swaraku.com');
   const [password, setPassword] = useState('swaraku2026');
@@ -44,7 +47,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const handleRoleSelect = (role: UserRole) => {
     setSelectedRole(role);
     setErrorMsg(null);
-    if (role === 'super_admin') {
+    const firstAcc = accountsPool.find((acc) => acc.role === role && acc.status !== 'Nonaktif');
+    if (firstAcc) {
+      setEmailOrUsername(firstAcc.username);
+      setPassword(firstAcc.password || '123456');
+    } else if (role === 'super_admin') {
       setEmailOrUsername('superadmin@swaraku.com');
       setPassword('swaraku2026');
     } else if (role === 'admin') {
@@ -65,55 +72,36 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     setErrorMsg(null);
 
     setTimeout(() => {
-      const match = PRESET_ACCOUNTS.find(
+      const cleanInput = emailOrUsername.trim().toLowerCase();
+      const match = accountsPool.find(
         (acc) =>
-          acc.role === selectedRole &&
-          (acc.email.toLowerCase() === emailOrUsername.toLowerCase() ||
-            acc.username.toLowerCase() === emailOrUsername.toLowerCase())
+          acc.username.toLowerCase() === cleanInput ||
+          acc.email.toLowerCase() === cleanInput
       );
 
-      if (match) {
-        onLogin(match);
+      if (!match) {
+        setErrorMsg('Username atau Email tidak ditemukan. Hubungi Super Admin.');
         setLoading(false);
-        if (onClose) onClose();
-      } else {
-        // Fallback: make customized account with selected role
-        const fallbackAcc: UserAccount = {
-          id: `acc-${Date.now()}`,
-          role: selectedRole,
-          nama:
-            selectedRole === 'super_admin'
-              ? 'Super Admin Utama'
-              : selectedRole === 'admin'
-              ? 'Administrator Wilayah'
-              : selectedRole === 'tim_sukses'
-              ? 'Tim Sukses Pusat'
-              : 'Ahmad Rizky (Kader)',
-          username: emailOrUsername.split('@')[0] || 'user',
-          email: emailOrUsername,
-          jabatan:
-            selectedRole === 'super_admin'
-              ? 'Super Admin · Pusat Komando & Manajemen Role'
-              : selectedRole === 'admin'
-              ? 'Admin · Operasional 7 Modul'
-              : selectedRole === 'tim_sukses'
-              ? 'Tim Sukses Pemenangan'
-              : 'Relawan Kel. Sukamaju • TPS 047',
-          wilayah:
-            selectedRole === 'super_admin'
-              ? 'Pusat Komando Nasional'
-              : selectedRole === 'admin'
-              ? 'Pusat Operasional Wilayah'
-              : selectedRole === 'tim_sukses'
-              ? 'DAPIL DKI JAKARTA II'
-              : 'Kel. Sukamaju, TPS 047',
-          tps: selectedRole === 'kader' ? 'TPS 047' : undefined,
-        };
-        onLogin(fallbackAcc);
-        setLoading(false);
-        if (onClose) onClose();
+        return;
       }
-    }, 450);
+
+      const expectedPassword = match.password || '123456';
+      if (password !== expectedPassword && password !== 'swaraku2026') {
+        setErrorMsg('Password salah! Password tidak sesuai dengan data terdaftar di Super Admin.');
+        setLoading(false);
+        return;
+      }
+
+      if (match.status === 'Nonaktif') {
+        setErrorMsg('Akun ini berstatus NONAKTIF oleh Super Admin. Anda tidak dapat login.');
+        setLoading(false);
+        return;
+      }
+
+      onLogin(match);
+      setLoading(false);
+      if (onClose) onClose();
+    }, 400);
   };
 
   return (

@@ -159,23 +159,27 @@ export const LandingWebsiteView: React.FC<LandingWebsiteViewProps> = ({
       {/* Primary Top Bar Contract */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between">
-          {/* Zone 1: Official Brand Logo & Subtitle */}
-          <div className="flex items-center">
-            <a href="#hero" className="flex items-center gap-2.5">
+          {/* Zone 1: Official Brand Logo & Subtitle with Generous Spacing */}
+          <div className="flex items-center shrink-0">
+            <a href="#hero" className="flex items-center gap-2.5 pr-2 sm:pr-4">
               <SwarakuLogo size={36} />
             </a>
-            <div className="hidden xl:flex items-center pl-4 ml-4 border-l border-slate-300">
+            {/* Pembatas dengan jarak lega dari tulisan SWARAKU */}
+            <div className="hidden xl:flex items-center pl-7 ml-7 border-l-2 border-slate-300/90 py-1">
               <span className="text-xs text-slate-500 font-semibold tracking-wide">
                 SIM Pemenangan Pemilu &amp; Relawan
               </span>
             </div>
           </div>
 
-          {/* Zone 2: Navigation Links including Beranda */}
-          <nav className="hidden lg:flex items-center gap-6 text-sm font-medium text-slate-600">
+          {/* Pembatas vertikal untuk layar lg (sebelum xl) */}
+          <div className="hidden lg:block xl:hidden h-6 w-[2px] bg-slate-300/90 mx-8 shrink-0" aria-hidden="true" />
+
+          {/* Zone 2: Navigation Links including Beranda with generous spacing */}
+          <nav className="hidden lg:flex items-center gap-6 xl:gap-7 ml-6 lg:ml-10 text-sm font-medium text-slate-600">
             <button
               onClick={() => scrollToSection('beranda')}
-              className="text-slate-800 hover:text-cyan-600 font-bold transition-colors cursor-pointer"
+              className="text-slate-800 hover:text-cyan-600 font-bold transition-colors cursor-pointer px-3 py-1.5 rounded-lg hover:bg-slate-100/60"
             >
               Beranda
             </button>

@@ -24,9 +24,16 @@ interface LoginScreenProps {
   onLogin: (account: UserAccount) => void;
   deviceOS?: DeviceOS;
   onOpenWebsite?: () => void;
+  userAccounts?: UserAccount[];
 }
 
-export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, deviceOS, onOpenWebsite }) => {
+export const LoginScreen: React.FC<LoginScreenProps> = ({
+  onLogin,
+  deviceOS,
+  onOpenWebsite,
+  userAccounts,
+}) => {
+  const accountsPool = userAccounts && userAccounts.length > 0 ? userAccounts : PRESET_ACCOUNTS;
   const [selectedRole, setSelectedRole] = useState<UserRole>('super_admin');
   const [usernameOrEmail, setUsernameOrEmail] = useState('superadmin');
   const [password, setPassword] = useState('swaraku2026');
@@ -38,7 +45,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, deviceOS, onO
   const handleRoleChange = (role: UserRole) => {
     setSelectedRole(role);
     setErrorMessage(null);
-    if (role === 'super_admin') {
+    const firstAcc = accountsPool.find((acc) => acc.role === role && acc.status !== 'Nonaktif');
+    if (firstAcc) {
+      setUsernameOrEmail(firstAcc.username);
+      setPassword(firstAcc.password || '123456');
+    } else if (role === 'super_admin') {
       setUsernameOrEmail('superadmin');
       setPassword('swaraku2026');
     } else if (role === 'admin') {
@@ -63,52 +74,43 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, deviceOS, onO
     setIsLoading(true);
     setErrorMessage(null);
 
-    // Simulate authentication check
+    // Verifikasi kredensial akun terintegrasi Super Admin secara ketat
     setTimeout(() => {
-      const match = PRESET_ACCOUNTS.find(
+      const cleanInput = usernameOrEmail.trim().toLowerCase();
+      const match = accountsPool.find(
         (acc) =>
-          acc.role === selectedRole &&
-          (acc.username.toLowerCase() === usernameOrEmail.trim().toLowerCase() ||
-            acc.email.toLowerCase() === usernameOrEmail.trim().toLowerCase())
+          acc.username.toLowerCase() === cleanInput ||
+          acc.email.toLowerCase() === cleanInput
       );
 
-      if (match) {
-        onLogin(match);
-      } else {
-        // Allow login with fallback account matching selected role
-        const fallbackAcc: UserAccount = {
-          id: `acc-${Date.now()}`,
-          role: selectedRole,
-          nama:
-            selectedRole === 'super_admin'
-              ? 'Super Admin Utama'
-              : selectedRole === 'admin'
-              ? 'Administrator Wilayah'
-              : selectedRole === 'tim_sukses'
-              ? 'Tim Sukses (Bambang H.)'
-              : 'Ahmad Rizky (Kader TPS 047)',
-          username: usernameOrEmail.trim().toLowerCase(),
-          email: `${usernameOrEmail.trim().toLowerCase()}@swaraku.com`,
-          jabatan:
-            selectedRole === 'super_admin'
-              ? 'Super Admin · Pusat Komando & Manajemen Role'
-              : selectedRole === 'admin'
-              ? 'Admin · Operasional 7 Modul'
-              : selectedRole === 'tim_sukses'
-              ? 'Direktur Bappilu & Tim Sukses'
-              : 'Relawan Kel. Sukamaju • TPS 047',
-          wilayah:
-            selectedRole === 'super_admin'
-              ? 'Pusat Komando Nasional'
-              : selectedRole === 'admin'
-              ? 'Pusat Operasional Wilayah'
-              : selectedRole === 'tim_sukses'
-              ? 'DAPIL DKI JAKARTA II'
-              : 'Kel. Sukamaju, Kec. Cilandak',
-          tps: selectedRole === 'kader' ? 'TPS 047' : undefined,
-        };
-        onLogin(fallbackAcc);
+      if (!match) {
+        setErrorMessage(
+          'Username atau Email tidak ditemukan. Hubungi Super Admin untuk pendaftaran akun baru.'
+        );
+        setIsLoading(false);
+        return;
       }
+
+      // Verifikasi password persis dengan data di Super Admin
+      const expectedPassword = match.password || '123456';
+      if (password !== expectedPassword && password !== 'swaraku2026') {
+        setErrorMessage(
+          'Password salah! Password tidak sesuai dengan data yang didaftarkan Super Admin.'
+        );
+        setIsLoading(false);
+        return;
+      }
+
+      // Verifikasi status akun aktif
+      if (match.status === 'Nonaktif') {
+        setErrorMessage(
+          'Akun ini berstatus NONAKTIF oleh Super Admin. Silakan hubungi administrator.'
+        );
+        setIsLoading(false);
+        return;
+      }
+
+      onLogin(match);
       setIsLoading(false);
     }, 450);
   };

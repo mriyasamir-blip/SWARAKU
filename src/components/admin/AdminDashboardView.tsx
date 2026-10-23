@@ -96,6 +96,7 @@ interface AdminDashboardViewProps {
   onOpenWebsite: () => void;
   userAccounts?: UserAccount[];
   onAddUser?: (user: UserAccount) => void;
+  onUpdateUser?: (user: UserAccount) => void;
   onDeleteUser?: (userId: string) => void;
   onToggleUserStatus?: (userId: string) => void;
 }
@@ -135,6 +136,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   onOpenWebsite,
   userAccounts = [],
   onAddUser,
+  onUpdateUser,
   onDeleteUser,
   onToggleUserStatus,
 }) => {
@@ -675,6 +677,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
             userAccounts={userAccounts}
             currentUser={currentUser}
             onAddUser={onAddUser || (() => {})}
+            onUpdateUser={onUpdateUser || (() => {})}
             onDeleteUser={onDeleteUser || (() => {})}
             onToggleUserStatus={onToggleUserStatus || (() => {})}
           />
