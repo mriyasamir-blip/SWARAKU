@@ -4,11 +4,13 @@ import {
   FormC1Upload,
   FormB1Upload,
   DptVoterRecord,
+  VoterOcrRecord,
   ElectabilitySurveySubmission,
   WhatsAppBlaztItem,
 } from '../../types/vore';
 import { CAMPAIGN_METRICS, INITIAL_B1_RECORDS } from '../../data/mockData';
 import { INITIAL_ELECTABILITY_SURVEYS, INITIAL_DPT_RECORDS, INITIAL_BLAZT_ITEMS } from '../../data/dptData';
+import { TimSuksesWilayahRecord } from '../../data/petaSuaraData';
 import { AutoCekNikModal } from '../common/AutoCekNikModal';
 import { WhatsAppBlaztModal } from '../common/WhatsAppBlaztModal';
 import { FormC1UploadModal } from '../common/FormC1UploadModal';
@@ -62,6 +64,7 @@ interface CommandCenterViewProps {
   aspirasiList: AspirasiItem[];
   c1Records: FormC1Upload[];
   b1Records?: FormB1Upload[];
+  voterList?: VoterOcrRecord[];
   onUpdateAspirasiStatus: (
     id: string,
     status: 'Masuk' | 'Diproses' | 'Selesai',
@@ -78,12 +81,17 @@ interface CommandCenterViewProps {
   onSubmitSurvey?: (submission: ElectabilitySurveySubmission, points: number) => void;
   onClearAllData?: () => void;
   onLoadSampleData?: () => void;
+  timSuksesList?: TimSuksesWilayahRecord[];
+  onSaveTimSukses?: (ts: TimSuksesWilayahRecord) => void;
+  onSaveVoter?: (voter: VoterOcrRecord) => void;
+  onResetDataToZero?: () => void;
 }
 
 export const CommandCenterView: React.FC<CommandCenterViewProps> = ({
   aspirasiList,
   c1Records,
   b1Records = [],
+  voterList = [],
   onUpdateAspirasiStatus,
   surveyList = [],
   dptList = [],
@@ -95,6 +103,10 @@ export const CommandCenterView: React.FC<CommandCenterViewProps> = ({
   onSubmitSurvey,
   onClearAllData,
   onLoadSampleData,
+  timSuksesList = [],
+  onSaveTimSukses,
+  onSaveVoter,
+  onResetDataToZero,
 }) => {
   const [activeTab, setActiveTab] = useState<
     'quick_count' | 'peta_suara' | 'dpt' | 'blazt' | 'aspirasi' | 'demografi' | 'survei'
@@ -276,16 +288,16 @@ export const CommandCenterView: React.FC<CommandCenterViewProps> = ({
 
         <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs col-span-2 md:col-span-1">
           <span className="text-[11px] font-semibold text-slate-400 uppercase block">
-            Pendukung DPT Terdata
+            Pendukung DPT & Lapangan
           </span>
           <div className="flex items-baseline gap-1.5 mt-1">
             <span className="text-2xl font-black text-emerald-600 font-mono">
-              {dptList.length.toLocaleString('id-ID')}
+              {new Set([...dptList.map((d) => d.nik), ...voterList.map((v) => v.nik)]).size.toLocaleString('id-ID')}
             </span>
             <span className="text-xs text-slate-500">Warga</span>
           </div>
           <span className="text-[10px] text-slate-500 font-medium mt-1 block">
-            Sinkron DPT KPU
+            {dptList.length} DPT KPU · {voterList.length} Terdata Kader
           </span>
         </div>
       </div>
@@ -777,11 +789,16 @@ export const CommandCenterView: React.FC<CommandCenterViewProps> = ({
         </div>
       )}
 
-      {/* Tab: MONITORING PETA SUARA DAPIL (Kab, Kec, Desa, TPS) */}
+      {/* Tab: MONITORING PETA SUARA DAPIL (Google Maps API & GIS) */}
       {activeTab === 'peta_suara' && (
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
           <MonitoringPetaSuaraScreen
+            voterList={voterList}
             dptList={dptList}
+            timSuksesList={timSuksesList}
+            onSaveTimSukses={onSaveTimSukses}
+            onSaveVoter={onSaveVoter}
+            onResetDataToZero={onResetDataToZero}
             onOpenWhatsAppBlazt={() => setShowBlaztModal(true)}
           />
         </div>
@@ -1139,11 +1156,26 @@ export const CommandCenterView: React.FC<CommandCenterViewProps> = ({
 
             {/* 4 Akumulasi Metric Cards */}
             {(() => {
-              const totalPendukung = dptList.length;
+              const combinedUniqueNiks = new Set([...dptList.map((d) => d.nik), ...voterList.map((v) => v.nik)]);
+              const totalPendukung = combinedUniqueNiks.size;
               const targetKemenangan = 20000;
               const pctTercapai = targetKemenangan > 0 ? ((totalPendukung / targetKemenangan) * 100).toFixed(1) : '0.0';
-              const pria = Math.round(totalPendukung * 0.486);
-              const wanita = Math.max(0, totalPendukung - pria);
+              let pria = 0;
+              let wanita = 0;
+              voterList.forEach((v) => {
+                if (v.jenisKelamin === 'Laki-laki') pria++;
+                else wanita++;
+              });
+              dptList.forEach((d) => {
+                if (!voterList.some((v) => v.nik === d.nik)) {
+                  if (d.jenisKelamin === 'L') pria++;
+                  else wanita++;
+                }
+              });
+              if (totalPendukung === 0) {
+                pria = 0;
+                wanita = 0;
+              }
               const genZ = Math.round(totalPendukung * 0.32);
               const milenial = Math.round(totalPendukung * 0.38);
               const genX = Math.round(totalPendukung * 0.21);

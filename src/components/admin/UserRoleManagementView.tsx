@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { UserAccount, UserRole } from '../../types/vore';
+import { TimSuksesWilayahRecord } from '../../data/petaSuaraData';
+import { lookupSmartCoordinates } from '../../utils/geocoding';
 import {
   Users,
   UserPlus,
@@ -32,6 +34,7 @@ interface UserRoleManagementViewProps {
   onUpdateUser?: (user: UserAccount) => void;
   onDeleteUser: (userId: string) => void;
   onToggleUserStatus: (userId: string) => void;
+  onSaveTimSukses?: (ts: TimSuksesWilayahRecord) => void;
 }
 
 export const UserRoleManagementView: React.FC<UserRoleManagementViewProps> = ({
@@ -41,6 +44,7 @@ export const UserRoleManagementView: React.FC<UserRoleManagementViewProps> = ({
   onUpdateUser,
   onDeleteUser,
   onToggleUserStatus,
+  onSaveTimSukses,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | UserRole>('all');
@@ -177,6 +181,47 @@ export const UserRoleManagementView: React.FC<UserRoleManagementViewProps> = ({
     };
 
     onAddUser(newAccount);
+
+    // Otomatis terhubung ke Peta Suara Swaraku jika role Tim Sukses
+    if (formRole === 'tim_sukses' && onSaveTimSukses) {
+      const parsedWilayah = formWilayah.trim();
+      let detectedKec = 'Kecamatan Penjaringan';
+      let detectedKota = 'Jakarta Utara';
+
+      if (parsedWilayah) {
+        if (parsedWilayah.toLowerCase().includes('penjaringan')) {
+          detectedKec = 'Kecamatan Penjaringan';
+          detectedKota = 'Jakarta Utara';
+        } else if (parsedWilayah.includes(',')) {
+          const parts = parsedWilayah.split(',').map((p) => p.trim());
+          detectedKec = parts[0] || 'Kecamatan Terdaftar';
+          detectedKota = parts[1] || 'DKI Jakarta';
+        } else {
+          detectedKec = parsedWilayah;
+          detectedKota = parsedWilayah.includes('Kota') || parsedWilayah.includes('Kab') ? parsedWilayah : 'DKI Jakarta';
+        }
+      }
+
+      const smartCoords = lookupSmartCoordinates('', detectedKec, detectedKota) || {
+        lat: -6.1264,
+        lng: 106.7885,
+      };
+
+      onSaveTimSukses({
+        id: `ts-${newAccount.id}`,
+        nama: newAccount.nama,
+        noHp: newAccount.noHp || '081288219901',
+        jabatan: newAccount.jabatan || 'Koordinator Tim Sukses',
+        kota: detectedKota,
+        kecamatanList: [detectedKec.toLowerCase().startsWith('kec') ? detectedKec : `Kecamatan ${detectedKec}`],
+        kelurahanList: ['Seluruh Kelurahan'],
+        lat: smartCoords.lat,
+        lng: smartCoords.lng,
+        waktuDaftar: newAccount.dibuatPada || 'Baru Didaftarkan',
+        status: 'Aktif',
+      });
+    }
+
     setIsAddModalOpen(false);
   };
 

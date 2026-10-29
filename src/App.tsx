@@ -76,6 +76,19 @@ import { MonitoringPendukungModal } from './components/common/MonitoringPendukun
 import { TambahNikUndangTemanModal } from './components/common/TambahNikUndangTemanModal';
 import { OfflineIndicator } from './components/pwa/OfflineIndicator';
 import { detectActualDevice, checkIsStandalone } from './utils/device';
+import {
+  getLocalStoredData,
+  setLocalStoredData,
+  syncSaveVoter,
+  syncSaveC1,
+  syncSaveB1,
+  syncSaveTimSukses,
+  fetchRemoteVoters,
+} from './utils/storageSync';
+import {
+  TimSuksesWilayahRecord,
+  INITIAL_TIM_SUKSES_LIST,
+} from './data/petaSuaraData';
 import { ArrowLeft, Globe } from 'lucide-react';
 
 export default function App() {
@@ -98,7 +111,12 @@ export default function App() {
     return null; // Show Login screen by default on app launch
   });
   const [loginModalOpen, setLoginModalOpen] = useState(false);
-  const [voterOcrRecords, setVoterOcrRecords] = useState<VoterOcrRecord[]>(INITIAL_VOTER_OCR_RECORDS);
+  const [voterOcrRecords, setVoterOcrRecords] = useState<VoterOcrRecord[]>(() =>
+    getLocalStoredData('swaraku_voter_ocr_records', INITIAL_VOTER_OCR_RECORDS)
+  );
+  const [timSuksesList, setTimSuksesList] = useState<TimSuksesWilayahRecord[]>(() =>
+    getLocalStoredData('swaraku_timsukses_list', INITIAL_TIM_SUKSES_LIST)
+  );
   const [pendaftaranVoterOcrModalOpen, setPendaftaranVoterOcrModalOpen] = useState(false);
   const [quickCountOcrModalOpen, setQuickCountOcrModalOpen] = useState(false);
   const [databaseVotersModalOpen, setDatabaseVotersModalOpen] = useState(false);
@@ -173,13 +191,19 @@ export default function App() {
   const [missions, setMissions] = useState<MissionItem[]>(INITIAL_MISSIONS);
   const [rewards, setRewards] = useState<RewardItem[]>(INITIAL_REWARDS);
   const [aspirasiList, setAspirasiList] = useState<AspirasiItem[]>([]);
-  const [c1Records, setC1Records] = useState<FormC1Upload[]>([]);
-  const [b1Records, setB1Records] = useState<FormB1Upload[]>([]);
+  const [c1Records, setC1Records] = useState<FormC1Upload[]>(() =>
+    getLocalStoredData('swaraku_c1_records', [])
+  );
+  const [b1Records, setB1Records] = useState<FormB1Upload[]>(() =>
+    getLocalStoredData('swaraku_b1_records', [])
+  );
   const [news, setNews] = useState<NewsItem[]>(INITIAL_NEWS);
 
-  // New modules states: Survey, DPT, WhatsApp Blazt (Empty by default for Command Center)
+  // New modules states: Survey, DPT, WhatsApp Blazt
   const [surveyList, setSurveyList] = useState<ElectabilitySurveySubmission[]>([]);
-  const [dptList, setDptList] = useState<DptVoterRecord[]>([]);
+  const [dptList, setDptList] = useState<DptVoterRecord[]>(() =>
+    getLocalStoredData('swaraku_dpt_list', INITIAL_DPT_RECORDS)
+  );
   const [blaztLogs, setBlaztLogs] = useState<WhatsAppBlaztItem[]>([]);
 
   // Modals State
@@ -313,21 +337,32 @@ export default function App() {
     showToast('🔒 Anda telah keluar dari aplikasi SWARAKU');
   };
 
-  // Sync with Cloud SQL database on mount
+  // Sync with Firestore & Cloud SQL database on mount
   useEffect(() => {
-    fetch('/api/voters')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success && Array.isArray(data.data) && data.data.length > 0) {
-          setVoterOcrRecords(data.data);
+    fetchRemoteVoters()
+      .then((remoteVoters) => {
+        if (remoteVoters && remoteVoters.length > 0) {
+          setVoterOcrRecords((prev) => {
+            const map = new Map<string, VoterOcrRecord>();
+            prev.forEach((v) => map.set(v.nik || v.id, v));
+            remoteVoters.forEach((v) => map.set(v.nik || v.id, v));
+            const merged = Array.from(map.values());
+            setLocalStoredData('swaraku_voter_ocr_records', merged);
+            return merged;
+          });
         }
       })
-      .catch((err) => console.warn('Cloud SQL initial fetch notice:', err));
+      .catch((err) => console.warn('Remote voters sync notice:', err));
   }, []);
 
   // Handler: Save voter from KTP Photo + OCR
   const handleSaveVoterOcr = async (voter: VoterOcrRecord) => {
-    setVoterOcrRecords((prev) => [voter, ...prev]);
+    setVoterOcrRecords((prev) => {
+      const updated = [voter, ...prev.filter((v) => v.nik !== voter.nik)];
+      setLocalStoredData('swaraku_voter_ocr_records', updated);
+      return updated;
+    });
+
     const newDpt: DptVoterRecord = {
       nik: voter.nik,
       nama: voter.nama,
@@ -343,26 +378,61 @@ export default function App() {
       noHp: voter.noHp,
       waktuVerifikasi: voter.waktuDaftar,
     };
-    setDptList((prev) => [newDpt, ...prev.filter((d) => d.nik !== voter.nik)]);
-    setKaderPoints((prev) => prev + 100);
-    showToast(`✅ Voter KTP "${voter.nama}" (${voter.tps}) berhasil didaftarkan via OCR & DPT KPU! (+100 Poin)`);
+    setDptList((prev) => {
+      const updated = [newDpt, ...prev.filter((d) => d.nik !== voter.nik)];
+      setLocalStoredData('swaraku_dpt_list', updated);
+      return updated;
+    });
 
-    // Asynchronously persist to Cloud SQL database
-    try {
-      await fetch('/api/voters', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(voter),
-      });
-    } catch (err) {
-      console.warn('Failed to persist voter to Cloud SQL:', err);
-    }
+    setKaderPoints((prev) => prev + 100);
+    showToast(`✅ Voter KTP "${voter.nama}" (${voter.tps}) berhasil didaftarkan & masuk Peta Suara (+100 Poin)`);
+    // Synchronize to Firestore, Cloud SQL, and localStorage
+    syncSaveVoter(voter);
   };
 
-  // Handler: Quick Count C1/B1 OCR Verification & Approve
+  // Handler: Save Tim Sukses Wilayah & Auto-connect to Peta Suara
+  const handleSaveTimSukses = (newTs: TimSuksesWilayahRecord) => {
+    setTimSuksesList((prev) => {
+      const updated = [newTs, ...prev.filter((i) => i.id !== newTs.id)];
+      setLocalStoredData('swaraku_timsukses_list', updated);
+      return updated;
+    });
+    syncSaveTimSukses(newTs);
+    showToast(`🗺️ Tim Sukses "${newTs.nama}" terdaftar & terhubung ke Peta Suara Google Maps!`);
+  };
+
+  // Handler: Kosongkan data Peta Suara ke kondisi awal (0 dummy data)
+  const handleResetPetaSuaraToZero = () => {
+    setTimSuksesList([]);
+    setVoterOcrRecords([]);
+    setDptList([]);
+    setLocalStoredData('swaraku_timsukses_list', []);
+    setLocalStoredData('swaraku_voter_ocr_records', []);
+    setLocalStoredData('swaraku_voter_records', []);
+    setLocalStoredData('swaraku_dpt_list', []);
+    showToast('🧹 Seluruh data wilayah, Tim Sukses, dan Voter telah dikosongkan (0 Data).');
+  };
+
+  // Handler: Quick Count C1 OCR Verification & Approve
   const handleApproveQuickCountOcr = (c1Data: FormC1Upload) => {
-    setC1Records((prev) => [c1Data, ...prev]);
+    setC1Records((prev) => {
+      const updated = [c1Data, ...prev.filter((c) => c.id !== c1Data.id)];
+      setLocalStoredData('swaraku_c1_records', updated);
+      return updated;
+    });
+    syncSaveC1(c1Data);
     showToast(`📊 Form C1 OCR ${c1Data.tps} (${c1Data.kelurahan}) berhasil diverifikasi & masuk Tabulasi!`);
+  };
+
+  // Handler: Quick Count B1 OCR Verification & Approve
+  const handleApproveQuickCountOcrB1 = (b1Data: FormB1Upload) => {
+    setB1Records((prev) => {
+      const updated = [b1Data, ...prev.filter((b) => b.id !== b1Data.id)];
+      setLocalStoredData('swaraku_b1_records', updated);
+      return updated;
+    });
+    syncSaveB1(b1Data);
+    showToast(`📊 Form B1 Kecamatan ${b1Data.kecamatan} berhasil diverifikasi & masuk Tabulasi!`);
   };
 
   // Handler: Electability survey submission
@@ -373,7 +443,11 @@ export default function App() {
 
   // Handler: Save voter from Auto Cek NIK
   const handleSaveDptVoter = (voter: DptVoterRecord) => {
-    setDptList((prev) => [voter, ...prev.filter((d) => d.nik !== voter.nik)]);
+    setDptList((prev) => {
+      const updated = [voter, ...prev.filter((d) => d.nik !== voter.nik)];
+      setLocalStoredData('swaraku_dpt_list', updated);
+      return updated;
+    });
 
     // Synchronize to Database Voters (voterOcrRecords)
     const newVoterOcr: VoterOcrRecord = {
@@ -396,7 +470,13 @@ export default function App() {
       statusRegistrasi: 'TERDAFTAR',
       terdaftarOleh: currentUser ? `${currentUser.nama} (${currentUser.role})` : 'Kader Lapangan',
     };
-    setVoterOcrRecords((prev) => [newVoterOcr, ...prev.filter((v) => v.nik !== voter.nik)]);
+    setVoterOcrRecords((prev) => {
+      const updated = [newVoterOcr, ...prev.filter((v) => v.nik !== voter.nik)];
+      setLocalStoredData('swaraku_voter_ocr_records', updated);
+      return updated;
+    });
+
+    syncSaveVoter(newVoterOcr);
     showToast(`✅ Data ${voter.nama} (${voter.tps}) berhasil disimpan ke Database Voters & Peta Suara!`);
   };
 
@@ -429,7 +509,11 @@ export default function App() {
       statusRegistrasi: 'TERDAFTAR',
       terdaftarOleh: currentUser ? `${currentUser.nama} (${currentUser.role})` : 'Kader Lapangan',
     };
-    setVoterOcrRecords((prev) => [newVoterOcr, ...prev.filter((v) => v.nik !== friend.nik)]);
+    setVoterOcrRecords((prev) => {
+      const updated = [newVoterOcr, ...prev.filter((v) => v.nik !== friend.nik)];
+      setLocalStoredData('swaraku_voter_ocr_records', updated);
+      return updated;
+    });
 
     const newDpt: DptVoterRecord = {
       nik: friend.nik,
@@ -446,7 +530,13 @@ export default function App() {
       noHp: friend.noHp,
       waktuVerifikasi: 'Baru saja',
     };
-    setDptList((prev) => [newDpt, ...prev.filter((d) => d.nik !== friend.nik)]);
+    setDptList((prev) => {
+      const updated = [newDpt, ...prev.filter((d) => d.nik !== friend.nik)];
+      setLocalStoredData('swaraku_dpt_list', updated);
+      return updated;
+    });
+
+    syncSaveVoter(newVoterOcr);
     showToast(`👥 ${friend.nama} (${friend.tps}) berhasil ditambahkan ke Database Voters & Peta Suara!`);
   };
 
@@ -597,7 +687,12 @@ export default function App() {
       fileName: c1Data.fileName,
     };
 
-    setC1Records([newRecord, ...c1Records]);
+    setC1Records((prev) => {
+      const updated = [newRecord, ...prev];
+      setLocalStoredData('swaraku_c1_records', updated);
+      return updated;
+    });
+    syncSaveC1(newRecord);
     showToast('📄 Formulir C1 TPS berhasil diunggah & masuk tabulasi quick count!');
   };
 
@@ -621,7 +716,12 @@ export default function App() {
       fileName: b1Data.fileName,
     };
 
-    setB1Records([newRecord, ...b1Records]);
+    setB1Records((prev) => {
+      const updated = [newRecord, ...prev];
+      setLocalStoredData('swaraku_b1_records', updated);
+      return updated;
+    });
+    syncSaveB1(newRecord);
     showToast(`📄 Formulir B1 Kecamatan ${newRecord.kecamatan} berhasil diunggah ke Quick Count!`);
   };
 
@@ -662,7 +762,11 @@ export default function App() {
       statusRegistrasi: 'TERDAFTAR',
       terdaftarOleh: currentUser ? `${currentUser.nama} (${currentUser.role})` : 'Kader Lapangan',
     };
-    setVoterOcrRecords((prev) => [newVoterOcr, ...prev.filter((v) => v.nik !== voterData.nik)]);
+    setVoterOcrRecords((prev) => {
+      const updated = [newVoterOcr, ...prev.filter((v) => v.nik !== voterData.nik)];
+      setLocalStoredData('swaraku_voter_ocr_records', updated);
+      return updated;
+    });
 
     const newDpt: DptVoterRecord = {
       nik: voterData.nik,
@@ -679,8 +783,13 @@ export default function App() {
       noHp: voterData.noHp,
       waktuVerifikasi: 'Baru saja',
     };
-    setDptList((prev) => [newDpt, ...prev.filter((d) => d.nik !== voterData.nik)]);
+    setDptList((prev) => {
+      const updated = [newDpt, ...prev.filter((d) => d.nik !== voterData.nik)];
+      setLocalStoredData('swaraku_dpt_list', updated);
+      return updated;
+    });
 
+    syncSaveVoter(newVoterOcr);
     showToast(`✅ Pemilih "${voterData.nama}" berhasil didaftarkan ke Database Voters & Peta Suara! (+50 Poin Kader)`);
   };
 
@@ -718,6 +827,9 @@ export default function App() {
     setDptList([]);
     setBlaztLogs([]);
     setAspirasiList([]);
+    setLocalStoredData('swaraku_c1_records', []);
+    setLocalStoredData('swaraku_b1_records', []);
+    setLocalStoredData('swaraku_dpt_list', []);
     showToast('🧹 Semua data Command Center berhasil dikosongkan!');
   };
 
@@ -729,6 +841,9 @@ export default function App() {
     setDptList(INITIAL_DPT_RECORDS);
     setBlaztLogs(INITIAL_BLAZT_ITEMS);
     setAspirasiList(INITIAL_ASPIRASI);
+    setLocalStoredData('swaraku_c1_records', INITIAL_C1_RECORDS);
+    setLocalStoredData('swaraku_b1_records', INITIAL_B1_RECORDS);
+    setLocalStoredData('swaraku_dpt_list', INITIAL_DPT_RECORDS);
     showToast('📊 Sampel simulasi data pemenangan berhasil dimuat!');
   };
 
@@ -873,6 +988,10 @@ export default function App() {
             onUpdateUser={handleUpdateUser}
             onDeleteUser={handleDeleteUser}
             onToggleUserStatus={handleToggleUserStatus}
+            timSuksesList={timSuksesList}
+            onSaveTimSukses={handleSaveTimSukses}
+            onSaveVoter={handleSaveVoterOcr}
+            onResetDataToZero={handleResetPetaSuaraToZero}
           />
         ) : (
           /* Halaman Aplikasi Setelah Login (Sesuai Akun Tim Sukses atau Kader) */
@@ -898,6 +1017,8 @@ export default function App() {
                       userAccount={currentUser}
                       profile={profile}
                       voterCount={voterOcrRecords.length}
+                      c1Records={c1Records}
+                      b1Records={b1Records}
                       onOpenDaftarVoterOcr={() => setPendaftaranVoterOcrModalOpen(true)}
                       onOpenQuickCountOcr={() => setQuickCountOcrModalOpen(true)}
                       onOpenDatabaseVoters={() => setDatabaseVotersModalOpen(true)}
@@ -945,6 +1066,11 @@ export default function App() {
                   <MonitoringPetaSuaraScreen
                     voterList={voterOcrRecords}
                     dptList={dptList}
+                    timSuksesList={timSuksesList}
+                    currentUser={currentUser}
+                    onSaveTimSukses={handleSaveTimSukses}
+                    onSaveVoter={handleSaveVoterOcr}
+                    onResetDataToZero={handleResetPetaSuaraToZero}
                     onOpenWhatsAppBlazt={() => setWhatsAppBlaztModalOpen(true)}
                     onNavigateTab={(tab) => setActiveMobileTab(tab as ActiveMobileTab)}
                     onOpenTambahNikModal={() => setTambahNikModalOpen(true)}
@@ -992,6 +1118,7 @@ export default function App() {
                 aspirasiList={aspirasiList}
                 c1Records={c1Records}
                 b1Records={b1Records}
+                voterList={voterOcrRecords}
                 onUpdateAspirasiStatus={handleUpdateAspirasiStatus}
                 surveyList={surveyList}
                 dptList={dptList}
@@ -1003,6 +1130,10 @@ export default function App() {
                 onSubmitSurvey={handleSurveySubmitted}
                 onClearAllData={handleClearCommandCenterData}
                 onLoadSampleData={handleLoadSampleCommandCenterData}
+                timSuksesList={timSuksesList}
+                onSaveTimSukses={handleSaveTimSukses}
+                onSaveVoter={handleSaveVoterOcr}
+                onResetDataToZero={handleResetPetaSuaraToZero}
               />
             )}
 
@@ -1040,6 +1171,7 @@ export default function App() {
         isOpen={quickCountOcrModalOpen}
         onClose={() => setQuickCountOcrModalOpen(false)}
         onApproveC1={handleApproveQuickCountOcr}
+        onApproveB1={handleApproveQuickCountOcrB1}
         saksiNama={currentUser?.nama || 'Ahmad Rizky'}
         defaultTps={currentUser?.tps || 'TPS 047'}
       />
@@ -1188,6 +1320,15 @@ export default function App() {
         invitedList={invitedFriends}
         onAddInvitedFriend={handleAddInvitedFriend}
       />
+
+      {/* Floating Toast Notification for App Mode */}
+      {toastMessage && (
+        <div className="fixed top-20 right-4 z-50 bg-white border-2 border-cyan-500 text-slate-900 px-4 py-2.5 rounded-2xl shadow-xl text-xs font-bold flex items-center gap-2 animate-bounce">
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
+      <OfflineIndicator />
 
       {/* Footer only displayed in Web Portal mode */}
       {!isAppMode && !isStandalone && (

@@ -11,6 +11,7 @@ import {
   VoterOcrRecord,
   VoterProfile,
 } from '../../types/vore';
+import { TimSuksesWilayahRecord } from '../../data/petaSuaraData';
 import { SwarakuLogo } from '../common/SwarakuLogo';
 import {
   LayoutDashboard,
@@ -99,6 +100,10 @@ interface AdminDashboardViewProps {
   onUpdateUser?: (user: UserAccount) => void;
   onDeleteUser?: (userId: string) => void;
   onToggleUserStatus?: (userId: string) => void;
+  timSuksesList?: TimSuksesWilayahRecord[];
+  onSaveTimSukses?: (ts: TimSuksesWilayahRecord) => void;
+  onSaveVoter?: (voter: VoterOcrRecord) => void;
+  onResetDataToZero?: () => void;
 }
 
 export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
@@ -139,6 +144,10 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   onUpdateUser,
   onDeleteUser,
   onToggleUserStatus,
+  timSuksesList = [],
+  onSaveTimSukses,
+  onSaveVoter,
+  onResetDataToZero,
 }) => {
   const isSuperAdmin = currentUser.role === 'super_admin';
 
@@ -573,6 +582,11 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
             <MonitoringPetaSuaraScreen
               voterList={voterOcrRecords}
               dptList={dptList}
+              timSuksesList={timSuksesList}
+              currentUser={currentUser}
+              onSaveTimSukses={onSaveTimSukses}
+              onSaveVoter={onSaveVoter}
+              onResetDataToZero={onResetDataToZero}
               onOpenWhatsAppBlazt={onOpenWhatsAppBlaztModal}
               onNavigateTab={(tab) => onTabChange(tab as AdminModuleTab)}
               onOpenTambahNikModal={onOpenTambahNikModal}
@@ -642,6 +656,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
               aspirasiList={aspirasiList}
               c1Records={c1Records}
               b1Records={b1Records}
+              voterList={voterOcrRecords}
               onUpdateAspirasiStatus={onUpdateAspirasiStatus}
               surveyList={surveyList}
               dptList={dptList}
@@ -651,6 +666,10 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
               onSubmitC1={onSubmitC1}
               onSubmitB1={onSubmitB1}
               onSubmitSurvey={onSubmitSurvey}
+              timSuksesList={timSuksesList}
+              onSaveTimSukses={onSaveTimSukses}
+              onSaveVoter={onSaveVoter}
+              onResetDataToZero={onResetDataToZero}
             />
           </div>
         )}
@@ -680,6 +699,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
             onUpdateUser={onUpdateUser || (() => {})}
             onDeleteUser={onDeleteUser || (() => {})}
             onToggleUserStatus={onToggleUserStatus || (() => {})}
+            onSaveTimSukses={onSaveTimSukses}
           />
         )}
       </main>

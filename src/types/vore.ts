@@ -225,6 +225,10 @@ export interface VoterOcrRecord {
   statusDpt: 'DPT valid' | 'Perlu cek';
   statusRegistrasi: 'TERDAFTAR';
   terdaftarOleh: string;
+  diinputOlehRole?: 'tim_sukses' | 'kader' | 'admin';
+  diinputOlehNama?: string;
+  lat?: number;
+  lng?: number;
 }
 
 export interface QuickCountOcrItem {
